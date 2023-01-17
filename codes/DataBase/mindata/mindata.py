@@ -1,0 +1,74 @@
+import os
+import sys
+import datetime
+import numpy as np
+import pandas as pd
+from pandas import Series, DataFrame
+import Config
+sys.path.append(Config.GLOBALCONFIG_PATH)
+import Global_Config as gc
+import tools
+import sqlalchemy as sa
+from sqlalchemy import create_engine
+
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
+
+end_date = datetime.datetime.today().strftime('%Y%m%d')
+start_date = end_date
+# start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
+
+# start_date = '20220930'
+
+# end_date = '20221018'
+# start_date = '20221018'
+
+sql_trade_cal = """
+select distinct cal_date from ttstradecal where is_open = 1
+"""
+
+trade_cal = list(pd.read_sql(sql_trade_cal, engine).loc[:, 'cal_date'])
+trade_cal = list(filter(lambda x:(x>=start_date) & (x<=end_date), trade_cal))
+
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")
+
+for trade_date in trade_cal:
+    try:
+        sql = """
+            CREATE TABLE `mindata`.`tmindata%s` (
+          `REC_CREATE_TIME` VARCHAR(14) NULL DEFAULT ' ',
+          `STOCK_CODE` VARCHAR(20) NOT NULL DEFAULT ' ',
+          `TRADE_DATE` VARCHAR(8) NOT NULL DEFAULT ' ',
+          `TRADE_TIME` VARCHAR(6) NOT NULL DEFAULT ' ',
+          `OPEN` DOUBLE NULL,
+          `HIGH` DOUBLE NULL,
+          `LOW` DOUBLE NULL,
+          `CLOSE` DOUBLE NULL,
+          `VOL` DOUBLE NULL,
+          `AMOUNT` DOUBLE NULL,
+          PRIMARY KEY (`STOCK_CODE`, `TRADE_DATE`, `TRADE_TIME`))
+            """%trade_date
+        with engine.connect() as con:
+            con.execute(sql)
+    except:
+        pass
+    d = 'D:/stock/DataBase/StockSnapshootData/' + trade_date
+    
+    # d = 'E:/DataBase/StockSnapshootData/' + trade_date
+    
+    files = os.listdir(d)
+    for file in files:
+        df = pd.read_csv(d+'/'+file, index_col=[0], parse_dates=[0]).loc[:, ['bid_price_1', 'ask_price_1', 'last_volume', 'last_amount']]
+        df.loc[:, 'mid_price'] = df.loc[:, ['bid_price_1', 'ask_price_1']].replace(0, np.nan).mean(1)
+        df = df.resample('1min').agg({'mid_price':['first', 'max', 'min', 'last'], 'last_volume':'sum', 'last_amount':'sum'}).fillna(method='ffill')
+        df.columns = ['open', 'high', 'low', 'close', 'vol', 'amount']
+        df.dropna(inplace=True)
+        if len(df) > 0:
+            df.loc[:, 'stock_code'] = file.split('.')[1]
+            df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+            df.loc[:, 'trade_date'] = [i.strftime('%Y%m%d') for i in df.index]
+            df.loc[:, 'trade_time'] = [i.strftime('%H%M%S') for i in df.index]
+            
+            df = df.loc[((df.index >= trade_date+'091500') & (df.index <= trade_date+'113000')) | ((df.index >= trade_date+'130000') & (df.index <= trade_date+'150000')), :]
+            
+            df.to_sql('tmindata%s'%trade_date, engine, schema='mindata', index=False, if_exists='append', method=tools.mysql_replace_into)
+        
