@@ -18,7 +18,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 pro = ts.pro_api()
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
-start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+start_date = (datetime.datetime.today() - datetime.timedelta(15)).strftime('%Y%m%d')
 
 # start_date = '20000101'
 

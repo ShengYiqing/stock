@@ -14,7 +14,7 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-white_threshold = 0.8
+white_threshold = 0.618
 is_neutral = 0
 factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
 halflife_ic_mean = 250

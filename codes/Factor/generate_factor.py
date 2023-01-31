@@ -18,7 +18,7 @@ def f(factor_file, start_date, end_date):
 
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(15)).strftime('%Y%m%d')
     # start_date = '20220930'
     files = os.listdir('D:/stock/Codes/Factor/')
     factor_files = list(filter(lambda x:x[-4]>='0' and x[-4]<='9', files))

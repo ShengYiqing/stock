@@ -47,7 +47,7 @@ def single_factor_analysis(factor_name, start_date, end_date, white_threshold=0.
     #         tools.factor_analyse(x_tmp, y_tmp, 10, factor_name + '-context ' + context + ' ' + str(i))
 
 if __name__ == '__main__':
-    factor_name = 'ca'
+    factor_name = 'expectedquality'
     
     factors = [
         'value', 'expectedquality', 

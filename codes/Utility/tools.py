@@ -266,16 +266,16 @@ def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0.618, 
                    on t1.trade_date = t2.trade_date
                    and t1.stock_code = t2.stock_code """
     if white_ind:
-        sql += """ left join tsdata.ttsstockbasic t3
+        sql += """ left join indsw.tindsw t3
                    on t1.stock_code = t3.stock_code """
     sql += """ where t1.trade_date >= \'{start_date}\'
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
         sql += " and t1.is_trade = 1 "
     if white_threshold:
-        sql += " and t2.score > {white_threshold} ".format(white_threshold=white_threshold)
+        sql += " and ( (t2.score) > {white_threshold} or (t2.top = 1)) ".format(white_threshold=white_threshold)
     if white_ind:
-        sql += (" and t3.industry in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
+        sql += (" and t3.l1_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
 
 
