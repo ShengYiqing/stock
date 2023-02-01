@@ -275,7 +275,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0.618, 
     if white_threshold:
         sql += " and ( (t2.score) > {white_threshold} or (t2.top = 1)) ".format(white_threshold=white_threshold)
     if white_ind:
-        sql += (" and t3.l1_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
+        sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
 
 

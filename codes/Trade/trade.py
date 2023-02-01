@@ -35,14 +35,14 @@ if __name__ == '__main__':
     ind_num_dic = {i : 0 for i in set(list(stock_ind.iloc[:,0]))}
     ind_num_dic = {i : 0 for i in gc.WHITE_INDUSTRY_LIST}
     trade_date = datetime.datetime.today().strftime('%Y%m%d')
-    trade_date = '20230130'
+    trade_date = '20230131'
     
     with open('./Results/position/pos.pkl', 'rb') as f:
         position = pickle.load(f)
         
-    buy_list = ['000680', '000895', '300438', '600718']
+    buy_list = []
 
-    sell_list= ['600873', '600600', '600487', '603517']
+    sell_list= ['002597', '300416']
     
     position.extend(buy_list)
     position = list(set(position) - set(sell_list))

@@ -6,12 +6,14 @@ import datetime
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
+from openpyxl import load_workbook
 
 #字段名
 
 #路径名
 PROJECT_PATH = 'D:/stock'
-GLOBALCONFIG_PATH = PROJECT_PATH + '/Codes'
+# GLOBALCONFIG_PATH = PROJECT_PATH + '/Codes'
+GLOBALCONFIG_PATH = PROJECT_PATH + '/Codes/Utility'
 DATABASE_PATH = PROJECT_PATH + '/DataBase'
 FACTORBASE_PATH = PROJECT_PATH + '/FactorBase'
 LABELBASE_PATH = PROJECT_PATH + '/LabelBase'
@@ -29,9 +31,53 @@ UPD_DATE = ['0507', '0907', '1107', '0507']
 DELTA_DATE = [50, 70, 40, 130]
 
 #风险因子
-WHITE_INDUSTRY_LIST = ['计算机', '商贸零售', '机械设备', '电力设备', '家用电器', 
-                       '电子', '汽车', '医药生物', '传媒', '国防军工', 
-                       '美容护理', '食品饮料']
+WHITE_INDUSTRY_DIC = {}
+excel = load_workbook('%s/行业.xlsx'%GLOBALCONFIG_PATH)
+sheet_name = excel.sheetnames[0]  
+sheet = excel[sheet_name]
+n = 0
+for line in sheet.iter_rows():
+    if n == 0:
+        pass
+    n += 1
+    if line[0].value not in WHITE_INDUSTRY_DIC.keys():
+        WHITE_INDUSTRY_DIC[line[0].value] = {}
+    if line[1].value not in WHITE_INDUSTRY_DIC[line[0].value].keys():
+        WHITE_INDUSTRY_DIC[line[0].value][line[1].value] = []
+    if line[2].fill.fgColor.rgb == 'FFFFFF00':
+        WHITE_INDUSTRY_DIC[line[0].value][line[1].value].append(line[2].value)
+WHITE_INDUSTRY_LIST = []
+for k1 in WHITE_INDUSTRY_DIC.keys():
+    for k2 in WHITE_INDUSTRY_DIC[k1].keys():
+        WHITE_INDUSTRY_LIST.extend(WHITE_INDUSTRY_DIC[k1][k2])
+
+# WHITE_INDUSTRY_DIC = {
+#     'iagri': [], 
+#     'ienergy': [], 
+#     'ibuildmat': [], 
+#     'ichemmat': [], 
+#     'imine': [], 
+#     'ichem': [],
+#     'ilight': [], 
+#     'iheavy': ['运输设备', '化工机械', '工程机械', '农用机械', '纺织机械', '轻工机械', ], 
+#     'istar': ['船舶', '航空', ], 
+#     'iauto': ['汽车配件', '汽车整车', '摩托车', '汽车服务', ], 
+#     'isoft': ['软件服务', '互联网', 'IT设备', '通信设备'], 
+#     'ihard': ['元器件', '半导体'], 
+#     'ielec': ['电气设备'], 
+#     'itech': ['机床制造', '专用机械', '电器仪表', '机械基件', ],
+#     'ialco': ['白酒', '啤酒', '红黄酒', ], 
+#     'idrinks': ['软饮料', '乳制品', ], 
+#     'ifoods': ['食品'], 
+#     'ibeauty': ['日用化工'], 
+#     'icons': ['旅游服务', '影视音像', '文教休闲', '家用电器', ], 
+#     'imed': ['生物制药', '化学制药', '中成药', '医疗保健'], 
+#     'ibusiness': ['广告包装', '仓储物流',], 
+#     'ifin': [], 
+#     'iutility': ['环境保护', '水力发电', '新型电力', ], 
+#     'iuk': []
+#     }
+
 # INDUSTRY_DIC = {
 #     'iagri': ['农药化肥', '农业综合', '林业', '饲料', '种植业', '渔业', ], 
 #     'ienergy': ['石油开采', '石油加工', '石油贸易', '煤炭开采',], 

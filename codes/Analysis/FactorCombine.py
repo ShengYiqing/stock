@@ -23,18 +23,9 @@ lambda_ic = 50
 lambda_i = 50
 
 factors = [
-    # 'value', 'expectedquality', 
-    
     'momentum', 'corrmarket', 
     'str', 
     'pvcorr', 
-    
-    # 'minmomentummean', 
-    # 'minskewmean', 
-    # 'mincorrmarketmean', 
-    # 'minstrmean', 
-    
-    # 'oc', 'ca',
     ]
 
 ic_sub = {'mc':0.01, 'bp':0.01}
@@ -45,7 +36,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20180101'
+start_date = '20120101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
