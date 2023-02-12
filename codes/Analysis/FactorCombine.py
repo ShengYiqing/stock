@@ -14,7 +14,7 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-white_threshold = 0.618
+white_threshold = 0.8
 is_neutral = 0
 factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
 halflife_ic_mean = 250
@@ -23,6 +23,7 @@ lambda_ic = 50
 lambda_i = 50
 
 factors = [
+    'value', 'quality', 
     'momentum', 'corrmarket', 
     'str', 
     'pvcorr', 
@@ -36,7 +37,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20120101'
+start_date = '20200101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:

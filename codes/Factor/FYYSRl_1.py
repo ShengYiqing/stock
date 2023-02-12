@@ -25,15 +25,16 @@ from sqlalchemy.types import VARCHAR
 def generate_factor(start_date, end_date):
     
     shift = 500
-    formula = 't2.t_compr_income / t1.total_hldr_eqy_inc_min_int'
-    table_name_tmp = 'tfactorfzhsyl'
+    formula = 't2.revenue / t1.total_hldr_eqy_inc_min_int'
+    table_name_tmp = 'tfactorfyysrl'
     methods = ['', 'd', 's']
     for method in methods:
         table_name = table_name_tmp + method
         factor = tools.generate_finance_formula(formula, start_date, end_date, shift, method)
         
-        factor = factor.replace(np.inf, np.nan)
-        factor = factor.replace(-np.inf, np.nan)
+        factor[factor<=0] = np.nan
+        factor.replace(np.inf, np.nan, inplace=True)
+        factor.replace(-np.inf, np.nan, inplace=True)
         factor.index.name = 'trade_date'
         factor.columns.name = 'stock_code'
         

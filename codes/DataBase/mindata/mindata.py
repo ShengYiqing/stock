@@ -19,8 +19,8 @@ start_date = end_date
 
 # start_date = '20220930'
 
-# end_date = '20221018'
-# start_date = '20221018'
+# end_date = '20220831'
+# start_date = '20210101'
 
 sql_trade_cal = """
 select distinct cal_date from ttstradecal where is_open = 1
@@ -32,35 +32,43 @@ trade_cal = list(filter(lambda x:(x>=start_date) & (x<=end_date), trade_cal))
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")
 
 for trade_date in trade_cal:
-    try:
-        sql = """
-            CREATE TABLE `mindata`.`tmindata%s` (
-          `REC_CREATE_TIME` VARCHAR(14) NULL DEFAULT ' ',
-          `STOCK_CODE` VARCHAR(20) NOT NULL DEFAULT ' ',
-          `TRADE_DATE` VARCHAR(8) NOT NULL DEFAULT ' ',
-          `TRADE_TIME` VARCHAR(6) NOT NULL DEFAULT ' ',
-          `OPEN` DOUBLE NULL,
-          `HIGH` DOUBLE NULL,
-          `LOW` DOUBLE NULL,
-          `CLOSE` DOUBLE NULL,
-          `VOL` DOUBLE NULL,
-          `AMOUNT` DOUBLE NULL,
-          PRIMARY KEY (`STOCK_CODE`, `TRADE_DATE`, `TRADE_TIME`))
-            """%trade_date
-        with engine.connect() as con:
-            con.execute(sql)
-    except:
-        pass
+    # try:
+    #     sql = """
+    #         CREATE TABLE `mindata`.`tmindata` (
+    #       `REC_CREATE_TIME` VARCHAR(14) NULL DEFAULT ' ',
+    #       `STOCK_CODE` VARCHAR(20) NOT NULL DEFAULT ' ',
+    #       `TRADE_DATE` VARCHAR(8) NOT NULL DEFAULT ' ',
+    #       `TRADE_TIME` VARCHAR(6) NOT NULL DEFAULT ' ',
+    #       `OPEN` DOUBLE NULL,
+    #       `HIGH` DOUBLE NULL,
+    #       `LOW` DOUBLE NULL,
+    #       `CLOSE` DOUBLE NULL,
+    #       `SPREAD` DOUBLE NULL,
+    #       `VOL` DOUBLE NULL,
+    #       `AMOUNT` DOUBLE NULL,
+    #       `IMBALANCE` DOUBLE NULL,
+    #       PRIMARY KEY (`STOCK_CODE`, `TRADE_DATE`, `TRADE_TIME`))
+    #         """
+    #     with engine.connect() as con:
+    #         con.execute(sql)
+    # except:
+    #     pass
     d = 'D:/stock/DataBase/StockSnapshootData/' + trade_date
     
     # d = 'E:/DataBase/StockSnapshootData/' + trade_date
     
     files = os.listdir(d)
     for file in files:
-        df = pd.read_csv(d+'/'+file, index_col=[0], parse_dates=[0]).loc[:, ['bid_price_1', 'ask_price_1', 'last_volume', 'last_amount']]
-        df.loc[:, 'mid_price'] = df.loc[:, ['bid_price_1', 'ask_price_1']].replace(0, np.nan).mean(1)
-        df = df.resample('1min').agg({'mid_price':['first', 'max', 'min', 'last'], 'last_volume':'sum', 'last_amount':'sum'}).fillna(method='ffill')
-        df.columns = ['open', 'high', 'low', 'close', 'vol', 'amount']
+        print(trade_date, file)
+        df = pd.read_csv(d+'/'+file, index_col=[0], parse_dates=[0]).loc[:, ['bid_price_1', 'ask_price_1', 'last_volume', 'last_amount']+['bid_vol_%s'%i for i in range(1, 6)]+['ask_vol_%s'%i for i in range(1, 6)]]
+        df.loc[:, 'mid_price'] = df.loc[:, ['bid_price_1', 'ask_price_1']].replace(0, np.nan).mean(1).fillna(method='ffill')
+        df.loc[:, 'spread'] = (np.log(df.loc[:, 'ask_price_1'].replace(0, np.nan)) - np.log(df.loc[:, 'bid_price_1'].replace(0, np.nan))).fillna(method='ffill')
+        df.loc[:, 'bid_vol'] = df.loc[:, ['bid_vol_%s'%i for i in range(1, 6)]].sum(1).fillna(0)
+        df.loc[:, 'ask_vol'] = df.loc[:, ['ask_vol_%s'%i for i in range(1, 6)]].sum(1).fillna(0)
+        df.loc[:, 'imbalance'] = ((df.bid_vol - df.ask_vol) / (df.bid_vol + df.ask_vol)).replace(-np.inf, np.nan).replace(np.inf, np.nan).fillna(method='ffill')
+        df = df.resample('5min').agg({'mid_price':['first', 'max', 'min', 'last'], 'spread':'mean', 'last_volume':'sum', 'last_amount':'sum', 'imbalance':'mean'})
+        
+        df.columns = ['open', 'high', 'low', 'close', 'spread', 'vol', 'amount', 'imbalance']
         df.dropna(inplace=True)
         if len(df) > 0:
             df.loc[:, 'stock_code'] = file.split('.')[1]
@@ -70,5 +78,5 @@ for trade_date in trade_cal:
             
             df = df.loc[((df.index >= trade_date+'091500') & (df.index <= trade_date+'113000')) | ((df.index >= trade_date+'130000') & (df.index <= trade_date+'150000')), :]
             
-            df.to_sql('tmindata%s'%trade_date, engine, schema='mindata', index=False, if_exists='append', method=tools.mysql_replace_into)
+            df.to_sql('tmindata', engine, schema='mindata', index=False, if_exists='append', method=tools.mysql_replace_into)
         

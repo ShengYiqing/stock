@@ -1,6 +1,8 @@
 # coding=utf-8
 from __future__ import print_function, absolute_import
 from gm.api import *
+import gm.api.basic as basic
+import gm.api.query as query
 import tushare as ts
 import datetime
 import time
@@ -74,18 +76,18 @@ def f(date, stock):
         print(date, stock, ' fail')
 if __name__ == '__main__':
     date = datetime.datetime.today().strftime('%Y%m%d')
+    start_date = date
+    end_date = date
     # date = '20221010'
     trade_cal = tools.get_trade_cal(start_date=date, end_date=date)
     if len(trade_cal) == 0:
         sys.exit()
-    f = open("%s/gm.txt"%gc.PROJECT_PATH)
-    s = f.read()
-    f.close()
+    file = open("%s/gm.txt"%gc.PROJECT_PATH)
+    s = file.read()
+    file.close()
     token = s
     basic.set_token(token)
     
-    start_date = date
-    end_date = date
     
     stocks = get_instruments(sec_types=1, fields='symbol', skip_suspended=False, skip_st=False, df=True)
     stocks = list(stocks.iloc[:, 0])
@@ -100,11 +102,11 @@ if __name__ == '__main__':
     pool = mp.Pool(2)
 
     for date in dates:
-        #pool.apply_async(func=f, args=(date, stocks))
+        pool.apply_async(func=f, args=(date, stocks))
         if not os.path.exists('D:/stock/DataBase/StockSnapshootData/%s'%date):
             os.mkdir('D:/stock/DataBase/StockSnapshootData/%s'%date)
         for stock in stocks:
             pool.apply_async(func=f, args=(date, stock))
-            
+            # f(date, stock)
     pool.close()
     pool.join()

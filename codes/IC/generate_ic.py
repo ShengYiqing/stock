@@ -88,7 +88,7 @@ def f(factor_name, white_threshold, start_date, end_date):
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
-    start_date = '20100101'
+    # start_date = '20100101'
     
     factors = [
         'value', 'expectedquality', 
@@ -100,13 +100,13 @@ if __name__ == '__main__':
         'oc', 'ca',
         ]
     factors = [
-        'momentum', 'volatility', 'skew', 'holo', 'corrmarket', 
-        'tr', 'str', 
+        'value', 'quality'
+        'momentum', 'corrmarket', 
+        'str', 
         'pvcorr', 
-        'oc', 'ca',
         ]
-    # factors = ['volatility']
-    white_thresholds = [0.618, 0.8, 0.9, 0.95]
+    # factors = ['quality']
+    white_thresholds = [0.2, 1-0.618, 0.618, 0.8]
     pool = mp.Pool(4)
     for factor in factors:
         for white_threshold in white_thresholds:

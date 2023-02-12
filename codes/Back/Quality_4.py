@@ -38,15 +38,8 @@ def generate_factor(start_date, end_date):
     f_list = ['fjzc', 'fjyzc', 
               'fyysr', 'fyysrxj', 
               'fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll', 
-              'expectedyysr', 'expectedjlr', 'analystcoverage'
               ]
     
-    factors_dic = {
-        'zc': ['fjzc', 'fjyzc'], 
-        'yy': ['fyysr', 'fyysrxj'], 
-        'yl': ['fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll'], 
-        'yq': ['expectedyysr', 'expectedjlr', 'analystcoverage'],
-        }
     sql = ' select tmc.stock_code, tmc.factor_value mc, tind.l1_name ind_1, tind.l2_name ind_2, tind.l3_name ind_3 '
     for f in f_list:
         sql = sql + ' , t{f}.factor_value {f} '.format(f=f)
@@ -77,27 +70,36 @@ def generate_factor(start_date, end_date):
         print(trade_date)
         sql_t = sql + ' where tmc.trade_date = %s '%trade_date
         df_sql = pd.read_sql(sql_t, engine).set_index('stock_code')
-        df_sql.replace(0, np.nan, inplace=True)
-        df_sql.loc[:, f_list] = df_sql.loc[:, f_list].apply(lambda x:x.rank()/x.notna().sum())
-
-        for factor_k in factors_dic.keys():
-            factor_v = factors_dic[factor_k]
-            df_sql.loc[:, factor_k] = df_sql.loc[:, factor_v].mean(1)
-        X = df_sql.loc[:, list(factors_dic.keys())+['ind_1', 'ind_2', 'ind_3']]
+        df_sql.loc[:, ['fjzc', 'fjyzc', 'fyysr']] = np.exp(df_sql.loc[:, ['fjzc', 'fjyzc', 'fyysr']])
+        
+        df_sql.loc[:, 'zc'] = df_sql.loc[:, 'fjyzc'] / df_sql.loc[:, 'fjzc']
+        
+        df_sql.loc[:, 'yy_1'] = df_sql.loc[:, 'fyysr'] / df_sql.loc[:, 'fjzc']
+        df_sql.loc[:, 'yy_2'] = df_sql.loc[:, 'fyysrxj'] / df_sql.loc[:, 'fjzc']
+        
+        df_sql.loc[:, 'yl_1'] = df_sql.loc[:, 'fml'] / df_sql.loc[:, 'fjzc']
+        df_sql.loc[:, 'yl_2'] = df_sql.loc[:, 'fmlxj'] / df_sql.loc[:, 'fjzc']
+        df_sql.loc[:, 'yl_3'] = df_sql.loc[:, 'fhxlr'] / df_sql.loc[:, 'fjzc']
+        df_sql.loc[:, 'yl_4'] = df_sql.loc[:, 'fzhsy'] / df_sql.loc[:, 'fjzc']
+        df_sql.loc[:, 'yl_5'] = df_sql.loc[:, 'fjyxjll'] / df_sql.loc[:, 'fjzc']
+        
+        df_sql.loc[:, ['zc', 'yy_1', 'yy_2', 'yl_1', 'yl_2', 'yl_3', 'yl_4', 'yl_5']] = df_sql.loc[:, ['zc', 'yy_1', 'yy_2', 'yl_1', 'yl_2', 'yl_3', 'yl_4', 'yl_5']].apply(lambda x:x.rank()/x.notna().sum())
+        df_sql.loc[:, 'q'] = df_sql.loc[:, ['zc', 'yy_1', 'yy_2', 'yl_1', 'yl_2', 'yl_3', 'yl_4', 'yl_5']].mean(1)
+        X = df_sql.loc[:, ['q', 'mc', 'ind_1', 'ind_2', 'ind_3']]
         X.loc[:, 'ind_1'] = X.loc[:, 'ind_1'].astype('category')
         X.loc[:, 'ind_2'] = X.loc[:, 'ind_2'].astype('category')
         X.loc[:, 'ind_3'] = X.loc[:, 'ind_3'].astype('category')
-        X.loc[:, list(factors_dic.keys())] = X.loc[:, list(factors_dic.keys())].astype('float32')
-        y = df_sql.loc[:, 'mc']
+        X.loc[:, 'mc'] = X.loc[:, 'mc'].astype('float32')
+        y = df_sql.loc[:, 'q']
         y = tools.standardize(y)
         y_predict = Series(0, index=y.index)
         
         train_data = lgb.Dataset(X, label=y, categorical_feature=['ind_1', 'ind_2', 'ind_3'], free_raw_data=False)
         
-    #     n = 1024
+    #     n = 256
     #     max_bin_l = [255]
     #     num_leaves_l = [31]
-    #     learning_rate_l = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05]
+    #     learning_rate_l = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
         
     #     for ps in itertools.product(max_bin_l, num_leaves_l, learning_rate_l):
     #         train_data = lgb.Dataset(X, label=y, free_raw_data=False)
@@ -148,7 +150,7 @@ def generate_factor(start_date, end_date):
         'num_leaves': 31,
         'max_depth': -1,
         'min_data_in_leaf': 8,
-        'learning_rate': 0.01,
+        'learning_rate': 0.05,
         'feature_fraction': np.sqrt(0.618),
         'feature_fraction_bynode': np.sqrt(0.618),
         'bagging_fraction': 0.618,
@@ -176,11 +178,11 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorvalue', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorquality', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
     start_date = '20100101'
     generate_factor(start_date, end_date)

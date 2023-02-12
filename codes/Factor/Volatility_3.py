@@ -42,19 +42,25 @@ def generate_factor(start_date, end_date):
     select t1.STOCK_CODE, t1.TRADE_DATE,  
            t1.factor_value as s1, 
            t2.factor_value as s2,
-           t3.factor_value as s3
+           t3.factor_value as s3,
+           t4.factor_value as s4
            from tfactorsigma t1
            left join tfactorhl t2
            on t1.trade_date = t2.trade_date
            and t1.stock_code = t2.stock_code
-           left join tfactorminsigmamean t3
+           left join tfactorminsigma t3
            on t1.trade_date = t3.trade_date
            and t1.stock_code = t3.stock_code
+           left join tfactorminhl t4
+           on t1.trade_date = t4.trade_date
+           and t1.stock_code = t4.stock_code
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['TRADE_DATE', 'STOCK_CODE'])
+    df = df.groupby('TRADE_DATE').apply(lambda x:x.rank()/x.notna().sum())
+    
     df = df.mean(1)
     df = df.unstack()
     df_p = tools.standardize(tools.winsorize(df))

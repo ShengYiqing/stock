@@ -243,7 +243,7 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
         if method == None or method == '':
             factor_tmp = factor_tmp.rolling(20, min_periods=4).mean()
         if method == 'd':
-            factor_tmp = factor_tmp.diff().rolling(20, min_periods=4).mean()
+            factor_tmp = factor_tmp.rolling(4, min_periods=1).mean().diff(20)
         if method == 's':
             factor_tmp = factor_tmp.rolling(20, min_periods=4).std()
         factor_tmp.fillna(method='ffill', limit=1, inplace=True)
