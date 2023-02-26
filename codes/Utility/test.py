@@ -4,13 +4,31 @@ import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
 
-import Config
-sys.path.append(Config.GLOBALCONFIG_PATH)
 import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
 import tools
+
+df = DataFrame(np.arange(80).reshape(20, 4))
+df.rolling(10, win_type='exponential').mean()
+
+trade_date = '20220104'
+x1 = 'corrmarket'
+x2 = 'hfcorrmarket'
+def dailyhffactor_analysis(x1, x2, trade_date):
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+    
+    sql = """
+    select stock_code, factor_name , factor_value from intermediate.tdailyhffactor
+    where trade_date = {trade_date}
+    and factor_name in ('{x1}', '{x2}')
+    """.format(x1=x1, x2=x2, trade_date=trade_date)
+    df = pd.read_sql(sql, engine).set_index(['stock_code', 'factor_name']).unstack()
+    df.dropna(inplace=True)
+    plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
+    print(df.corr())
+dailyhffactor_analysis(x1, x2, trade_date)
 
 for ind_k in gc.WHITE_INDUSTRY_DIC.keys():
     if (len(gc.WHITE_INDUSTRY_DIC[ind_k]) > 0):
@@ -52,8 +70,8 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'analystcoverage'
-x2 = 'expectedyysr'
+x1 = 'corrmarket'
+x2 = 'hfcorrmarket'
 tools.colinearity_analysis(x1, x2, trade_date)
 
 start_date = '20200101'

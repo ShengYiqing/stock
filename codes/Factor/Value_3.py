@@ -98,7 +98,7 @@ def generate_factor(start_date, end_date):
     #     max_bin_l = [255]
     #     num_leaves_l = [31]
     #     learning_rate_l = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05]
-        
+
     #     for ps in itertools.product(max_bin_l, num_leaves_l, learning_rate_l):
     #         train_data = lgb.Dataset(X, label=y, free_raw_data=False)
     #         num_boost_round = n

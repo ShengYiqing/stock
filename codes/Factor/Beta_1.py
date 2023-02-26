@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
@@ -34,7 +34,7 @@ def generate_factor(start_date, end_date):
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
-    sql = sql.format(start_date=start_date, end_date=end_date)
+    sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine)
     CLOSE = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'CLOSE']
     ADJ_FACTOR = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'ADJ_FACTOR']
@@ -43,8 +43,9 @@ def generate_factor(start_date, end_date):
     CLOSE = np.log(CLOSE * ADJ_FACTOR)
     r = CLOSE.diff()
     r_m = r.mean(1)
-    n = 250
-    df = r.rolling(n, min_periods=60).corr(r_m) * r.rolling(n, min_periods=60).std()
+    n = 60
+    df = r.rolling(n, min_periods=20).corr(r_m) * r.rolling(n, min_periods=20).std()
+    df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
     df_p = tools.standardize(tools.winsorize(df))

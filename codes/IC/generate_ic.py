@@ -87,23 +87,12 @@ def f(factor_name, white_threshold, start_date, end_date):
     
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
-    # start_date = '20100101'
+    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+    start_date = '20100101'
     
     factors = [
-        'value', 'expectedquality', 
-        
-        'momentum', 'volatility', 'skew', 'holo', 'corrmarket', 
-        'tr', 'str', 
-        'pvcorr', 
-        
-        'oc', 'ca',
-        ]
-    factors = [
-        'value', 'quality'
-        'momentum', 'corrmarket', 
-        'str', 
-        'pvcorr', 
+        'value', 'quality',
+        'dailytech', 'hftech', 
         ]
     # factors = ['quality']
     white_thresholds = [0.2, 1-0.618, 0.618, 0.8]

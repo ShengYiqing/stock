@@ -27,25 +27,28 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")
     
     sql = """
-    select trade_date, stock_code, trade_time, close from tmindata
+    select trade_date, stock_code, trade_time, vol from tmindata
     where trade_date >= {start_date}
     and trade_date <= {end_date}
     """.format(start_date=start_date, end_date=end_date)
     
     df_sql = pd.read_sql(sql, engine)
     def f(df):
-        c = df.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
-        c = c.loc[c.index>='093000']
-        r = np.log(c).diff()
-        s = r.std()
-        return s
+        v = df.set_index(['trade_time', 'stock_code']).loc[:, 'vol'].unstack()
+        v = v.loc[v.index>='093000']
+        v = v.div(v.sum(), axis=1)
+        v = v.replace(np.inf, np.nan)
+        v = v.replace(-np.inf, np.nan)
+        logv = np.log(v).replace(np.inf, np.nan).replace(-np.inf, np.nan)
+        e = - (v * logv).sum()
+        return e
     df = df_sql.groupby('trade_date').apply(f).unstack().ewm(halflife=5).mean()
     
     df_p = tools.standardize(tools.winsorize(df))
     df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df_new.to_sql('tfactorminsigma', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorminetr', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

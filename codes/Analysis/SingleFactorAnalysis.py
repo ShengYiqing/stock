@@ -47,7 +47,7 @@ def single_factor_analysis(factor_name, start_date, end_date, white_threshold=0.
     #         tools.factor_analyse(x_tmp, y_tmp, 10, factor_name + '-context ' + context + ' ' + str(i))
 
 if __name__ == '__main__':
-    factor_name = 'hl'
+    factor_name = 'dailytech'
     factors = [
         'momentum', 'volatility', 'skew', 'holo', 'corrmarket', 
         'tr', 'str', 
@@ -62,9 +62,13 @@ if __name__ == '__main__':
         
         'oc', 'ca',
         ]
-    start_date = '20180101'
-    end_date = '20220930'
+    start_date = '20120101'
+    end_date = '20230301'
     white_threshold = 0.8
+    value_type = 'preprocessed_factor_value'
+    print(factor_name, start_date, end_date, white_threshold, value_type)
+    single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
+    white_threshold = 0
     value_type = 'preprocessed_factor_value'
     print(factor_name, start_date, end_date, white_threshold, value_type)
     single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)

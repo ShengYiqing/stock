@@ -36,7 +36,7 @@ if __name__ == '__main__':
     ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_2'] if len(set(list(ind.loc[ind.loc[:, 'ind_2']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
     
     trade_date = datetime.datetime.today().strftime('%Y%m%d')
-    trade_date = '20230210'
+    trade_date = '20230226'
     
     with open('./Results/position/pos.pkl', 'rb') as f:
         position = pickle.load(f)
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     print(position)
     print(len(position))
     
-    white_threshold = 0.8
+    white_threshold = 0.618
     is_neutral = 0
     factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
     halflife_ic_mean = 250
@@ -64,10 +64,9 @@ if __name__ == '__main__':
     
     factors = [
         'value', 'quality', 
-        'momentum', 'corrmarket', 
-        'str', 
-        'pvcorr', 
+        'dailytech', 'hftech', 
         ]
+
     ic_sub = {'mc':0.01, 'bp':0.01}
     ic_sub = {}
     

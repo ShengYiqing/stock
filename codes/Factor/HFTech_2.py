@@ -26,41 +26,33 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorvolatility` (
+        CREATE TABLE `factor`.`tfactorhftech` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(20) NOT NULL,
           `FACTOR_VALUE` DOUBLE NULL,
           `PREPROCESSED_FACTOR_VALUE` DOUBLE NULL,
+          `NEUTRAL_FACTOR_VALUE` DOUBLE NULL,
           PRIMARY KEY (`TRADE_DATE`, `STOCK_CODE`))
         """
         with engine.connect() as con:
             con.execute(sql)
     except:
         pass
-    sql = """
-    select t1.STOCK_CODE, t1.TRADE_DATE,  
-           t1.factor_value as s1, 
-           t2.factor_value as s2,
-           t3.factor_value as s3,
-           t4.factor_value as s4
-           from tfactorsigma t1
-           left join tfactorhl t2
-           on t1.trade_date = t2.trade_date
-           and t1.stock_code = t2.stock_code
-           left join tfactorminsigma t3
-           on t1.trade_date = t3.trade_date
-           and t1.stock_code = t3.stock_code
-           left join tfactorminhl t4
-           on t1.trade_date = t4.trade_date
-           and t1.stock_code = t4.stock_code
-    where t1.trade_date >= {start_date}
-    and t1.trade_date <= {end_date}
-    """
-    sql = sql.format(start_date=start_date, end_date=end_date)
-    df = pd.read_sql(sql, engine).set_index(['TRADE_DATE', 'STOCK_CODE'])
-    df = df.groupby('TRADE_DATE').apply(lambda x:x.rank()/x.notna().sum())
-    
+    factor_dic = {'hfcallauctionmomentum': 1, 'hfintradaymomentum': 2, 
+                  'hfhl': -1, 'hfsigma': -1, 'hfskew': -1,
+                  'hfcorrmarket': 2, 
+                  'hfetr': -1, 'hfttr': 1, 'hfutr': -1, 
+                  'hfpicorr': -1, 'hfpscorr': 1, 
+                  'hfspread': 1,}
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_threshold=None, is_trade=False, white_ind=False, factor_value_type='factor_value')
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+
+    df = pd.read_sql(sql, engine)
+    df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
+    df = df.groupby('trade_date').apply(lambda x:x.rank()/x.notna().sum())
+    for factor in factor_dic.keys():
+        df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.mean(1)
     df = df.unstack()
     df_p = tools.standardize(tools.winsorize(df))
@@ -68,11 +60,11 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorvolatility', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorhftech', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-    start_date = '20100101'
+    start_date = '20210101'
     generate_factor(start_date, end_date)

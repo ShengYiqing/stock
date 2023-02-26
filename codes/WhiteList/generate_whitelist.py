@@ -14,19 +14,26 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-factors = ['mc', 'amount', 'fjzc', 'fjyzc', 'fyysr', 'fyysrxj', 'fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll', 'expectedyysr', 'expectedjlr', 'analystcoverage',]
+factors = ['mc', 'amount', 
+           'fjzc', 'fjyzc', 
+           'fyysr', 'fyysrxj', 
+           'fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll', 
+           # 'expectedyysr', 'expectedjlr', 'analystcoverage',
+           # 'quality',
+           ]
 
 factors_dic = {
     'gm': ['mc', 'amount'], 
     'zc': ['fjzc', 'fjyzc'], 
     'yy': ['fyysr', 'fyysrxj'], 
     'yl': ['fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll'], 
-    'yq': ['expectedyysr', 'expectedjlr', 'analystcoverage'],
+    # 'yq': ['expectedyysr', 'expectedjlr', 'analystcoverage'], 
+    # 'zl': ['quality'],
     }
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-# start_date = '20100101'
+start_date = '20100101'
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 
@@ -61,9 +68,9 @@ df.loc[:, 'score'] = (
     2 * df.loc[:, factor_ks].mean(1).groupby(['trade_date', 'ind_2']).apply(lambda x:x.rank()/x.notna().sum()) + 
     1 * df.loc[:, factor_ks].mean(1).groupby(['trade_date', 'ind_3']).apply(lambda x:x.rank()/x.notna().sum())
     ).groupby(['trade_date']).apply(lambda x:x.rank()/x.notna().sum())
-df.loc[:, 'top_1'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_1']).apply(lambda x:(x.rank()>(x.notna().sum()-10)))
-df.loc[:, 'top_2'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_2']).apply(lambda x:(x.rank()>(x.notna().sum()-5)))
-df.loc[:, 'top_3'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_3']).apply(lambda x:(x.rank()>(x.notna().sum()-3)))
+df.loc[:, 'top_1'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_1']).apply(lambda x:(x.rank()>(x.notna().sum()-5)))
+df.loc[:, 'top_2'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_2']).apply(lambda x:(x.rank()>(x.notna().sum()-1)))
+df.loc[:, 'top_3'] = df.loc[:, 'score'].groupby(['trade_date', 'ind_3']).apply(lambda x:(x.rank()>(x.notna().sum()-1)))
 df.loc[:, 'top'] = (df.loc[:, 'top_1'] | df.loc[:, 'top_2'] | df.loc[:, 'top_3']).astype(int)
 df = df.loc[:, ['score', 'top'] + factor_ks]
 df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
