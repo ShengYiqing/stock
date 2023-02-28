@@ -92,10 +92,10 @@ if __name__ == '__main__':
     
     factors = [
         'value', 'quality',
-        'dailytech', 'hftech', 
+        'hftech', 'dailytech'
         ]
     # factors = ['quality']
-    white_thresholds = [0.2, 1-0.618, 0.618, 0.8]
+    white_thresholds = [0.618, 0.8, 0.9]
     pool = mp.Pool(4)
     for factor in factors:
         for white_threshold in white_thresholds:

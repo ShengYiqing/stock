@@ -33,17 +33,17 @@ if __name__ == '__main__':
     group by l1_name, l2_name, l3_name
     order by l1_name, l2_name, l3_name"""
     ind = pd.read_sql(sql_ind, engine)
-    ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_2'] if len(set(list(ind.loc[ind.loc[:, 'ind_2']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
+    ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
     
     trade_date = datetime.datetime.today().strftime('%Y%m%d')
-    trade_date = '20230226'
+    trade_date = '20230228'
     
     with open('./Results/position/pos.pkl', 'rb') as f:
         position = pickle.load(f)
         
-    buy_list = ['002507', '300124', '600073', '603678']
+    buy_list = ['002430', '601231', '600089', '600967', '600271', '603444']
 
-    sell_list= ['000988', '603345', '002414', '000895']
+    sell_list= ['600718', '688559', '300124', '002507', '688396', '300457']
     
     position.extend(buy_list)
     position = list(set(position) - set(sell_list))
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     print(position)
     print(len(position))
     
-    white_threshold = 0.618
+    white_threshold = 0.8
     is_neutral = 0
     factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
     halflife_ic_mean = 250
@@ -139,13 +139,13 @@ if __name__ == '__main__':
     for stock in r_hat_rank.index:
         s = """{:>8} {:>8} {:>8} {:>8} {:>8}"""
         if stock[:6] in stock_ind.index:
-            print(s.format(stock[:6], stock_ind.loc[stock[:6], 'stock_name'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), stock_ind.loc[stock[:6], 'ind_2']))
+            print(s.format(stock[:6], stock_ind.loc[stock[:6], 'stock_name'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), stock_ind.loc[stock[:6], 'ind_1']))
         else:
             print(s.format(stock[:6], ' ', r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), ' '))    
-        if stock_ind.loc[stock[:6], 'ind_2'] in ind_num_dic.keys():
-            ind_num_dic[stock_ind.loc[stock[:6], 'ind_2']] += 1
+        if stock_ind.loc[stock[:6], 'ind_1'] in ind_num_dic.keys():
+            ind_num_dic[stock_ind.loc[stock[:6], 'ind_1']] += 1
         else:
-            ind_num_dic[stock_ind.loc[stock[:6], 'ind_2']] = 1
+            ind_num_dic[stock_ind.loc[stock[:6], 'ind_1']] = 1
     df = df.loc[trade_date, :]
     stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
     print(df.loc[stock_list_old, factors].mean().round(2))
@@ -158,10 +158,10 @@ if __name__ == '__main__':
     
     ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
     r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-    n = 3
+    n = 10
     
     for ind in ind_num_dic.keys():
-        stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_2']==ind])
+        stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
         stocks = list(set(stocks).intersection(stocks_all) - set(position))
         ret_tmp = ret.loc[stocks].sort_values(ascending=False)
         r_hat_rank_tmp = r_hat_rank.loc[stocks].sort_values(ascending=False)

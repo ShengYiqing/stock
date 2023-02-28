@@ -15,7 +15,7 @@ import tools
 from sqlalchemy import create_engine
 
 factors = ['mc', 'amount', 
-           'fjzc', 'fjyzc', 
+           # 'fjzc', 'fjyzc', 
            'fyysr', 'fyysrxj', 
            'fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll', 
            # 'expectedyysr', 'expectedjlr', 'analystcoverage',
@@ -24,7 +24,7 @@ factors = ['mc', 'amount',
 
 factors_dic = {
     'gm': ['mc', 'amount'], 
-    'zc': ['fjzc', 'fjyzc'], 
+    # 'zc': ['fjzc', 'fjyzc'], 
     'yy': ['fyysr', 'fyysrxj'], 
     'yl': ['fml', 'fmlxj', 'fhxlr', 'fzhsy', 'fjyxjll'], 
     # 'yq': ['expectedyysr', 'expectedjlr', 'analystcoverage'], 
