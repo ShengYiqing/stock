@@ -39,12 +39,11 @@ def generate_factor(start_date, end_date):
             con.execute(sql)
     except:
         pass
-    factor_dic = {'hfcallauctionmomentum': 1, 'hfintradaymomentum': 2, 
-                  'hfhl': -1, 'hfsigma': -1, 'hfskew': -1,
-                  'hfcorrmarket': 2, 
+    factor_dic = {'hfcallauctionmomentum': 1, 'hfintradaymomentum': 1, 'hfbluff': -1,
+                  'hfskew': -1, 'hfcorrmarket': 1, 
                   'hfetr': -1, 'hfttr': 1, 'hfutr': -1, 
                   'hfpicorr': -1, 'hfpscorr': 1, 
-                  'hfspread': 1,}
+                  'hfspread': 1, 'hfimbalance': 1}
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_threshold=None, is_trade=False, white_ind=False, factor_value_type='factor_value')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 

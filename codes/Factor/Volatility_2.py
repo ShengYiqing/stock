@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactordailytech` (
+        CREATE TABLE `factor`.`tfactorvolatility` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(20) NOT NULL,
@@ -39,8 +39,9 @@ def generate_factor(start_date, end_date):
             con.execute(sql)
     except:
         pass
-    factor_dic = {'skew':-1,
-                  'pvcorr':-1,}
+    factor_dic = {'sigma':-1, 'hl':-1, 
+                  'hfsigma':-1, 'hfhl':-1, 
+                  }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_threshold=None, is_trade=False, white_ind=False, factor_value_type='factor_value')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -56,7 +57,7 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactordailytech', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorvolatility', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

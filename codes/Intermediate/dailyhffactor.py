@@ -227,14 +227,38 @@ def callauctionmomentum(df_sql):
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
-f_list = [CorrMarket, sigma, skew, HL, ETR, TTR, UTR, spread, PSCorr, PICorr, intradaymomentum, callauctionmomentum]
-# f_list = [CorrMarketA, ]
+def bluff(df_sql):
+    h = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'high'].unstack()
+    l = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'low'].unstack()
+    h = h.loc[h.index<='092000']
+    l = l.loc[l.index<='092000']
+    h = h.max()
+    l = l.min()
+    c = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
+    c = c.loc['092500']
+    hc = (np.log(h) - np.log(c))
+    cl = (np.log(c) - np.log(l))
+    b = hc - cl
+    df = DataFrame({'factor_value':b})
+    df.loc[:, 'trade_date'] = trade_date
+    df.loc[:, 'factor_name'] = 'bluff'
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+
+f_list = [CorrMarket, sigma, skew, HL, 
+          ETR, TTR, UTR, 
+          spread, imbalance, 
+          PSCorr, PICorr, 
+          intradaymomentum, callauctionmomentum, 
+          bluff]
+# f_list = [bluff, imbalance]
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(0)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
     # start_date = '20210101'
-    
+    # end_date = '20230303'
+    # start_date = '20230303'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")
     
     sql_tmp = """

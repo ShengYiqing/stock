@@ -51,7 +51,7 @@ def generate_factor(start_date, end_date):
             pass
         df = df_sql.loc[df_sql.factor_name == factor_name]
         df = df.set_index(['trade_date', 'stock_code']).loc[:, 'factor_value'].unstack().sort_index()
-        df = df.rolling(20, min_periods=5).mean()
+        df = df.ewm(halflife=2.5).mean()
         df = df.loc[df.index>=start_date]
         df_p = tools.standardize(tools.winsorize(df))
         df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])

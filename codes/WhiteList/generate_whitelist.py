@@ -33,7 +33,7 @@ factors_dic = {
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-start_date = '20100101'
+# start_date = '20100101'
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 

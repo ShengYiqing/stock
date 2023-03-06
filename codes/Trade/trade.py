@@ -36,14 +36,14 @@ if __name__ == '__main__':
     ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
     
     trade_date = datetime.datetime.today().strftime('%Y%m%d')
-    trade_date = '20230228'
+    trade_date = '20230303'
     
     with open('./Results/position/pos.pkl', 'rb') as f:
         position = pickle.load(f)
         
-    buy_list = ['002430', '601231', '600089', '600967', '600271', '603444']
+    buy_list = ['002001', '601369', '600580']
 
-    sell_list= ['600718', '688559', '300124', '002507', '688396', '300457']
+    sell_list= ['002236', ]
     
     position.extend(buy_list)
     position = list(set(position) - set(sell_list))
@@ -63,7 +63,8 @@ if __name__ == '__main__':
     lambda_i = 50
     
     factors = [
-        'value', 'quality', 
+        'quality', 'value', 
+        'momentum', 'volatility', 'liquidity', 'corrmarket',
         'dailytech', 'hftech', 
         ]
 
@@ -76,7 +77,7 @@ if __name__ == '__main__':
     ic_sub = Series(ic_sub)
     
     end_date = trade_date
-    start_date = tools.trade_date_shift(trade_date, 1000)
+    start_date = tools.trade_date_shift(trade_date, 2500)
     trade_dates = tools.get_trade_cal(start_date, end_date)
     
     print('halflife_ic_mean: ', halflife_ic_mean)
@@ -158,7 +159,7 @@ if __name__ == '__main__':
     
     ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
     r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-    n = 10
+    n = 5
     
     for ind in ind_num_dic.keys():
         stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
