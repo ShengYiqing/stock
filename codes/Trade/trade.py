@@ -19,100 +19,109 @@ sys.path.append(Config.GLOBALCONFIG_PATH)
 import tools
 import Global_Config as gc
 
-if __name__ == '__main__':
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-    sql_stock_ind = """
-    select t1.stock_code, t1.name stock_name, t2.l1_name ind_1, t2.l2_name ind_2, t2.l3_name ind_3
-    from tsdata.ttsstockbasic t1 
-    left join indsw.tindsw t2
-    on t1.stock_code = t2.stock_code
-    where not isnull(t2.l1_name)"""
-    stock_ind = pd.read_sql(sql_stock_ind, engine).set_index('stock_code')
-    sql_ind = """
-    select l1_name ind_1, l2_name ind_2, l3_name ind_3 from indsw.tindsw 
-    group by l1_name, l2_name, l3_name
-    order by l1_name, l2_name, l3_name"""
-    ind = pd.read_sql(sql_ind, engine)
-    ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
-    
-    trade_date = datetime.datetime.today().strftime('%Y%m%d')
-    trade_date = '20230303'
-    
-    with open('./Results/position/pos.pkl', 'rb') as f:
-        position = pickle.load(f)
-        
-    buy_list = ['002001', '601369', '600580']
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-    sell_list= ['002236', ]
-    
-    position.extend(buy_list)
-    position = list(set(position) - set(sell_list))
-    with open('./Results/position/pos.pkl', 'wb') as f:
-        pickle.dump(position, f)
-        
-    position.sort()
-    print(position)
-    print(len(position))
-    
-    white_threshold = 0.8
-    is_neutral = 0
-    factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
-    halflife_ic_mean = 250
-    halflife_ic_cov = 750
-    lambda_ic = 50
-    lambda_i = 50
-    
-    factors = [
-        'quality', 'value', 
-        'momentum', 'volatility', 'liquidity', 'corrmarket',
-        'dailytech', 'hftech', 
-        ]
+sql_stock_ind = """
+select t1.stock_code, t1.name stock_name, t2.l1_name ind_1, t2.l2_name ind_2, t2.l3_name ind_3
+from tsdata.ttsstockbasic t1 
+left join indsw.tindsw t2
+on t1.stock_code = t2.stock_code
+where not isnull(t2.l1_name)"""
 
-    ic_sub = {'mc':0.01, 'bp':0.01}
-    ic_sub = {}
-    
-    for factor in factors:
-        if factor not in ic_sub.keys():
-            ic_sub[factor] = 0
-    ic_sub = Series(ic_sub)
-    
-    end_date = trade_date
-    start_date = tools.trade_date_shift(trade_date, 2500)
-    trade_dates = tools.get_trade_cal(start_date, end_date)
-    
-    print('halflife_ic_mean: ', halflife_ic_mean)
-    print('halflife_ic_cov: ', halflife_ic_cov)
-    print('lambda_ic: ', lambda_ic)
-    print('lambda_i: ', lambda_i)
-    print('factors: ', factors)
-    print('ic_sub: ', ic_sub)
-    
-    #读ic
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/ic?charset=utf8")
-    
-    sql_ic = """
-    select trade_date, factor_name, 
-    (ic_m+rank_ic_m)/2 as ic_m, 
-    (ic_w+rank_ic_w)/2 as ic_w, 
-    (ic_d+rank_ic_d)/2 as ic_d
-    from tdailyic
-    where factor_name in {factor_names}
-    and trade_date >= {start_date}
-    and trade_date <= {end_date}
-    and white_threshold = {white_threshold}
-    and is_neutral = {is_neutral}
-    """
-    sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold, is_neutral=is_neutral)
-    df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
-    df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
-    df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
-    df_ic_d = df_ic.loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
-    df_ic = df_ic_d
+stock_ind = pd.read_sql(sql_stock_ind, engine).set_index('stock_code')
 
-    ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean()
+sql_ind = """
+select l1_name ind_1, l2_name ind_2, l3_name ind_3 from indsw.tindsw 
+group by l1_name, l2_name, l3_name
+order by l1_name, l2_name, l3_name"""
+ind = pd.read_sql(sql_ind, engine)
+
+ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
+
+trade_date = datetime.datetime.today().strftime('%Y%m%d')
+trade_date = '20230315'
+
+with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
+    position = pickle.load(f)
+
+buy_list = ['600739', '002611', '000555', '600887', '600690', '002920', '300957', '002415']
+
+sell_list= ['002430', '300040', '688291', '603258', '688662', '300467', '600590']
+
+position.extend(buy_list)
+position = list(set(position) - set(sell_list))
+with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
+    pickle.dump(position, f)
+
+position.sort()
+print('----持股列表----')
+print(position)
+print('----持股数量----')
+print('持股数量: ', len(position))
+
+white_threshold = 0.8
+is_neutral = 0
+factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
+halflife_ic_mean = 250
+halflife_ic_cov = 750
+lambda_ic = 50
+lambda_i = 50
+
+factors = [
+    'mc', 'bp', 
+    'quality', 'value', 
+    'momentum', 'volatility', 'liquidity', 'corrmarket',
+    'dailytech', 'hftech', 
+    ]
+
+ic_sub = {'mc':0.01, 'bp':0.01}
+ic_sub = {}
+
+for factor in factors:
+    if factor not in ic_sub.keys():
+        ic_sub[factor] = 0
+ic_sub = Series(ic_sub)
+
+end_date = trade_date
+start_date = tools.trade_date_shift(trade_date, 2500)
+trade_dates = tools.get_trade_cal(start_date, end_date)
+
+print('----参数----')
+print('halflife_ic_mean: ', halflife_ic_mean)
+print('halflife_ic_cov: ', halflife_ic_cov)
+print('lambda_ic: ', lambda_ic)
+print('lambda_i: ', lambda_i)
+print('factors: ', factors)
+print('ic_sub: ', ic_sub)
+
+#读ic
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/ic?charset=utf8")
+
+sql_ic = """
+select trade_date, factor_name, 
+(ic_m+rank_ic_m)/2 as ic_m, 
+(ic_w+rank_ic_w)/2 as ic_w, 
+(ic_d+rank_ic_d)/2 as ic_d
+from tdailyic
+where factor_name in {factor_names}
+and trade_date >= {start_date}
+and trade_date <= {end_date}
+and white_threshold = {white_threshold}
+and is_neutral = {is_neutral}
+"""
+sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold, is_neutral=is_neutral)
+df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
+df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
+df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
+df_ic_d = df_ic.loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+ic_dic = {'d':df_ic_d, 'w':df_ic_w, 'm':df_ic_m}
+weight_dic = {}
+for t in ic_dic.keys():
+    df_ic = ic_dic[t]
+    ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean().fillna(0)
     ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
-
-    weight = DataFrame(0, index=trade_dates, columns=df_ic_m.columns)
+    
+    weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     for trade_date in trade_dates:
         mat_ic = ic_cov.loc[trade_date, :].values
         mat_ic = mat_ic / np.trace(mat_ic)
@@ -120,59 +129,244 @@ if __name__ == '__main__':
         mat_i = mat_i / np.trace(mat_i)
         mat = lambda_ic * mat_ic + lambda_i * mat_i
         weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values / 2)
-        
-    start_date = trade_date
-    sql = tools.generate_sql_y_x(factors, start_date, end_date, white_threshold=white_threshold, factor_value_type=factor_value_type)
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-    
-    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    
-    r_hat = DataFrame(dtype='float64')
-    for factor in factors:
-        print(factor)
-        r_hat = r_hat.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
+    weight_dic[t] = tools.standardize(weight)
+weight_dic['d'] = 1 * weight_dic['d']
+weight_dic['w'] = 1 * weight_dic['w']
+weight_dic['m'] = 1 * weight_dic['m']
+weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
 
-    stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
-    r_hat = DataFrame(r_hat, columns=stocks_all)
-    ret = r_hat.loc[trade_date, :].loc[position].sort_values(ascending=False)
-    r_hat_rank = r_hat.loc[trade_date, :].rank().loc[position].sort_values(ascending=False)
-    
-    for stock in r_hat_rank.index:
-        s = """{:>8} {:>8} {:>8} {:>8} {:>8}"""
-        if stock[:6] in stock_ind.index:
-            print(s.format(stock[:6], stock_ind.loc[stock[:6], 'stock_name'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), stock_ind.loc[stock[:6], 'ind_1']))
+start_date = trade_date
+sql = tools.generate_sql_y_x(factors, start_date, end_date, white_threshold=white_threshold, factor_value_type=factor_value_type)
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+
+df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+
+r_hat = DataFrame(dtype='float64')
+for factor in factors:
+    r_hat = r_hat.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
+
+stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
+r_hat = DataFrame(r_hat, columns=stocks_all)
+ret = r_hat.loc[trade_date, :].loc[position].sort_values(ascending=False)
+r_hat_rank = r_hat.loc[trade_date, :].rank().loc[position].sort_values(ascending=False)
+
+hold_dic = {}
+for stock in r_hat_rank.index:
+    if stock in stock_ind.index:
+        hold_dic[stock] = [stock_ind.loc[stock, 'stock_name'], stock_ind.loc[stock, 'ind_1'], stock_ind.loc[stock, 'ind_2'], stock_ind.loc[stock, 'ind_3'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3)]
+        if stock in df.loc[trade_date, :].index:
+            hold_dic[stock].extend(list(df.loc[trade_date, :].loc[stock].loc[factors]))
         else:
-            print(s.format(stock[:6], ' ', r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), ' '))    
-        if stock_ind.loc[stock[:6], 'ind_1'] in ind_num_dic.keys():
-            ind_num_dic[stock_ind.loc[stock[:6], 'ind_1']] += 1
-        else:
-            ind_num_dic[stock_ind.loc[stock[:6], 'ind_1']] = 1
-    df = df.loc[trade_date, :]
-    stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
-    print(df.loc[stock_list_old, factors].mean().round(2))
-    print('00', len(list(filter(lambda x:x[0] == '0', position))))
-    print('30', len(list(filter(lambda x:x[0] == '3', position))))
-    print('60', len(list(filter(lambda x:x[0:2] == '60', position))))
-    print('68', len(list(filter(lambda x:x[0:3] == '688', position))))
-    print(ind_num_dic)
-    print('---%s---'%trade_date)
+            hold_dic[stock].extend([np.nan] * len(factors))
+    else:
+        continue
+    if stock_ind.loc[stock, 'ind_1'] in ind_num_dic.keys():
+        ind_num_dic[stock_ind.loc[stock, 'ind_1']] += 1
+    else:
+        ind_num_dic[stock_ind.loc[stock, 'ind_1']] = 1
+df_hold = DataFrame(hold_dic).T
+df_hold.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益'] + factors
+df_hold.index.name = '股票代码'
+df_hold.reset_index(inplace=True)
+df_hold = df_hold.groupby('一级行业').apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
+df_hold.index = range(len(df_hold))
+#print(df_hold)
+
+df = df.loc[trade_date, :]
+stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
+print('----持股暴露----')
+print(df.loc[stock_list_old, factors].mean().round(2))
+print('----板块数量----')
+print('00', len(list(filter(lambda x:x[0] == '0', position))))
+print('30', len(list(filter(lambda x:x[0] == '3', position))))
+print('60', len(list(filter(lambda x:x[0:2] == '60', position))))
+print('68', len(list(filter(lambda x:x[0:3] == '688', position))))
+print('----行业数量----')
+print(ind_num_dic)
+print('---%s---'%trade_date)
+
+ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
+r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
+n = 10
+
+buy_dic = {}
+for ind in ind_num_dic.keys():
+    stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
+    stocks = list(set(stocks).intersection(stocks_all) - set(position))
+    ret_tmp = ret.loc[stocks].sort_values(ascending=False)
+    r_hat_rank_tmp = r_hat_rank.loc[stocks].sort_values(ascending=False)
+    m = min(n, len(stocks))
+    for i in range(m):
+        stock_code = r_hat_rank_tmp.index[i]
+        if stock_code not in position:
+            buy_dic[stock_code] = [stock_ind.loc[stock_code, 'stock_name'], 
+                                   stock_ind.loc[stock_code, 'ind_1'], 
+                                   stock_ind.loc[stock_code, 'ind_2'], 
+                                   stock_ind.loc[stock_code, 'ind_3'], 
+                                   r_hat_rank_tmp.loc[stock_code], 
+                                   np.around(ret_tmp.loc[stock_code], 3),]
+            buy_dic[stock_code].extend(df.loc[stock_code, factors])
+
+df_buy = DataFrame(buy_dic).T
+df_buy.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益'] + factors
+df_buy.index.name = '股票代码'
+df_buy.reset_index(inplace=True)
+df_buy = df_buy.groupby('一级行业').apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
+df_buy.index = range(len(df_buy))
+# if __name__ == '__main__':
+#     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+#     sql_stock_ind = """
+#     select t1.stock_code, t1.name stock_name, t2.l1_name ind_1, t2.l2_name ind_2, t2.l3_name ind_3
+#     from tsdata.ttsstockbasic t1 
+#     left join indsw.tindsw t2
+#     on t1.stock_code = t2.stock_code
+#     where not isnull(t2.l1_name)"""
+#     stock_ind = pd.read_sql(sql_stock_ind, engine).set_index('stock_code')
+#     sql_ind = """
+#     select l1_name ind_1, l2_name ind_2, l3_name ind_3 from indsw.tindsw 
+#     group by l1_name, l2_name, l3_name
+#     order by l1_name, l2_name, l3_name"""
+#     ind = pd.read_sql(sql_ind, engine)
+#     ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
     
-    ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
-    r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-    n = 5
+#     trade_date = datetime.datetime.today().strftime('%Y%m%d')
+#     trade_date = '20230310'
     
-    for ind in ind_num_dic.keys():
-        stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
-        stocks = list(set(stocks).intersection(stocks_all) - set(position))
-        ret_tmp = ret.loc[stocks].sort_values(ascending=False)
-        r_hat_rank_tmp = r_hat_rank.loc[stocks].sort_values(ascending=False)
-        m = min(n, len(stocks))
-        for i in range(m):
-            stock_code = r_hat_rank_tmp.index[i]
-            if stock_code not in position:
-                print(s.format(stock_code, 
-                                stock_ind.loc[stock_code, 'stock_name'], 
-                                r_hat_rank_tmp.loc[stock_code], 
-                                np.around(ret_tmp.loc[stock_code], 3), 
-                                ind))
+#     with open('./Results/position/pos.pkl', 'rb') as f:
+#         position = pickle.load(f)
+        
+#     buy_list = ['603258']
+
+#     sell_list= ['600566']
+    
+#     position.extend(buy_list)
+#     position = list(set(position) - set(sell_list))
+#     with open('./Results/position/pos.pkl', 'wb') as f:
+#         pickle.dump(position, f)
+        
+#     position.sort()
+#     print(position)
+#     print(len(position))
+    
+#     white_threshold = 0
+#     is_neutral = 0
+#     factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
+#     halflife_ic_mean = 250
+#     halflife_ic_cov = 750
+#     lambda_ic = 50
+#     lambda_i = 50
+    
+#     factors = [
+#         'quality', 'value', 
+#         'momentum', 'volatility', 'liquidity', 'corrmarket',
+#         'dailytech', 'hftech', 
+#         ]
+
+#     ic_sub = {'mc':0.01, 'bp':0.01}
+#     ic_sub = {}
+    
+#     for factor in factors:
+#         if factor not in ic_sub.keys():
+#             ic_sub[factor] = 0
+#     ic_sub = Series(ic_sub)
+    
+#     end_date = trade_date
+#     start_date = tools.trade_date_shift(trade_date, 2500)
+#     trade_dates = tools.get_trade_cal(start_date, end_date)
+    
+#     print('halflife_ic_mean: ', halflife_ic_mean)
+#     print('halflife_ic_cov: ', halflife_ic_cov)
+#     print('lambda_ic: ', lambda_ic)
+#     print('lambda_i: ', lambda_i)
+#     print('factors: ', factors)
+#     print('ic_sub: ', ic_sub)
+    
+#     #读ic
+#     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/ic?charset=utf8")
+    
+#     sql_ic = """
+#     select trade_date, factor_name, 
+#     (ic_m+rank_ic_m)/2 as ic_m, 
+#     (ic_w+rank_ic_w)/2 as ic_w, 
+#     (ic_d+rank_ic_d)/2 as ic_d
+#     from tdailyic
+#     where factor_name in {factor_names}
+#     and trade_date >= {start_date}
+#     and trade_date <= {end_date}
+#     and white_threshold = {white_threshold}
+#     and is_neutral = {is_neutral}
+#     """
+#     sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold, is_neutral=is_neutral)
+#     df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
+#     df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
+#     df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
+#     df_ic_d = df_ic.loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+#     df_ic = df_ic_d
+
+#     ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean()
+#     ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
+
+#     weight = DataFrame(0, index=trade_dates, columns=df_ic_m.columns)
+#     for trade_date in trade_dates:
+#         mat_ic = ic_cov.loc[trade_date, :].values
+#         mat_ic = mat_ic / np.trace(mat_ic)
+#         mat_i = np.diag(np.ones(len(factors)))
+#         mat_i = mat_i / np.trace(mat_i)
+#         mat = lambda_ic * mat_ic + lambda_i * mat_i
+#         weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values / 2)
+        
+#     start_date = trade_date
+#     sql = tools.generate_sql_y_x(factors, start_date, end_date, white_threshold=white_threshold, factor_value_type=factor_value_type)
+#     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+    
+#     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+    
+#     r_hat = DataFrame(dtype='float64')
+#     for factor in factors:
+#         print(factor)
+#         r_hat = r_hat.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
+
+#     stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
+#     r_hat = DataFrame(r_hat, columns=stocks_all)
+#     ret = r_hat.loc[trade_date, :].loc[position].sort_values(ascending=False)
+#     r_hat_rank = r_hat.loc[trade_date, :].rank().loc[position].sort_values(ascending=False)
+    
+#     for stock in r_hat_rank.index:
+#         s = """{:>8} {:>8} {:>8} {:>8} {:>8}"""
+#         if stock in stock_ind.index:
+#             print(s.format(stock, stock_ind.loc[stock, 'stock_name'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), stock_ind.loc[stock, 'ind_1']))
+#         else:
+#             print(s.format(stock, ' ', r_hat_rank.loc[stock], np.around(ret.loc[stock], 3), ' '))    
+#         if stock_ind.loc[stock, 'ind_1'] in ind_num_dic.keys():
+#             ind_num_dic[stock_ind.loc[stock, 'ind_1']] += 1
+#         else:
+#             ind_num_dic[stock_ind.loc[stock, 'ind_1']] = 1
+#     df = df.loc[trade_date, :]
+#     stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
+#     print(df.loc[stock_list_old, factors].mean().round(2))
+#     print('00', len(list(filter(lambda x:x[0] == '0', position))))
+#     print('30', len(list(filter(lambda x:x[0] == '3', position))))
+#     print('60', len(list(filter(lambda x:x[0:2] == '60', position))))
+#     print('68', len(list(filter(lambda x:x[0:3] == '688', position))))
+#     print(ind_num_dic)
+#     print('---%s---'%trade_date)
+    
+#     ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
+#     r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
+#     n = 5
+    
+#     for ind in ind_num_dic.keys():
+#         stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
+#         stocks = list(set(stocks).intersection(stocks_all) - set(position))
+#         ret_tmp = ret.loc[stocks].sort_values(ascending=False)
+#         r_hat_rank_tmp = r_hat_rank.loc[stocks].sort_values(ascending=False)
+#         m = min(n, len(stocks))
+#         for i in range(m):
+#             stock_code = r_hat_rank_tmp.index[i]
+#             if stock_code not in position:
+#                 print(s.format(stock_code, 
+#                                 stock_ind.loc[stock_code, 'stock_name'], 
+#                                 r_hat_rank_tmp.loc[stock_code], 
+#                                 np.around(ret_tmp.loc[stock_code], 3), 
+#                                 ind))
                 

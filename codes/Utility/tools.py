@@ -252,7 +252,7 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
     factor = factor.astype(float)
     return factor
     
-def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0.618, is_trade=True, white_ind=True, factor_value_type='preprocessed_factor_value'):
+def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_trade=True, white_ind=True, factor_value_type='preprocessed_factor_value'):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     for factor_name in factor_names:
         sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type)

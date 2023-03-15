@@ -23,13 +23,14 @@ lambda_ic = 50
 lambda_i = 50
 
 factors = [
+    'mc', 'bp',
     'quality', 'value', 
     'momentum', 'volatility', 'liquidity', 'corrmarket',
     'dailytech', 'hftech', 
     ]
 
 ic_sub = {'mc':0.01, 'bp':0.01}
-ic_sub = {}
+# ic_sub = {}
 
 for factor in factors:
     if factor not in ic_sub.keys():
@@ -74,21 +75,28 @@ df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
 df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
 df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
 df_ic_d = df_ic.loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
-df_ic = pd.concat([df_ic_m.stack(), df_ic_w.stack(), df_ic_d.stack()], axis=1).mean(1).unstack()
-df_ic = df_ic_d
-ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean().fillna(0)
-ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
 
-weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
-for trade_date in trade_dates:
-    mat_ic = ic_cov.loc[trade_date, :].values
-    mat_ic = mat_ic / np.trace(mat_ic)
-    mat_i = np.diag(np.ones(len(factors)))
-    mat_i = mat_i / np.trace(mat_i)
-    mat = lambda_ic * mat_ic + lambda_i * mat_i
-    weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values / 2)
+ic_dic = {'d':df_ic_d, 'w':df_ic_w, 'm':df_ic_m}
+weight_dic = {}
+for t in ic_dic.keys():
+    df_ic = ic_dic[t]
+    ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean().fillna(0)
+    ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
     
-    
+    weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
+    for trade_date in trade_dates:
+        mat_ic = ic_cov.loc[trade_date, :].values
+        mat_ic = mat_ic / np.trace(mat_ic)
+        mat_i = np.diag(np.ones(len(factors)))
+        mat_i = mat_i / np.trace(mat_i)
+        mat = lambda_ic * mat_ic + lambda_i * mat_i
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values / 2)
+    weight_dic[t] = tools.standardize(weight)
+weight_dic['d'] = 1 * weight_dic['d']
+weight_dic['w'] = 1 * weight_dic['w']
+weight_dic['m'] = 1 * weight_dic['m']
+weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
+
 sql = tools.generate_sql_y_x(factors, start_date, end_date, white_threshold=white_threshold, factor_value_type=factor_value_type)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 

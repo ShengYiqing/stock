@@ -91,11 +91,13 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
+        'mc', 'bp', 
         'quality', 'value', 
         'momentum', 'volatility', 'liquidity', 'corrmarket',
         'dailytech', 'hftech', 
         ]
-    white_thresholds = [0, 1-0.618, 0.618, 0.8]
+    white_thresholds = [0, 0.2, 1-0.618, 0.618, 0.8]
+    # white_thresholds = [0.2]
     pool = mp.Pool(4)
     for factor in factors:
         for white_threshold in white_thresholds:
