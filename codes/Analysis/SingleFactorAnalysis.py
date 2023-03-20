@@ -48,22 +48,23 @@ def single_factor_analysis(factor_name, start_date, end_date, white_threshold=0.
 
 if __name__ == '__main__':
     factor_name = 'hftech'
-    factors = {'hfcallauctionmomentum': 1, 'hfintradaymomentum': 1, 'hfbluff': 1,
-                  'hfskew': -1, 'hfcorrmarket': 1, 
-                  'hfetr': -1, 'hfttr': 1, 'hfutr': -1, 
-                  'hfpicorr': -1, 'hfpscorr': 1, 
-                  'hfspread': 1, 'hfimbalance': 1}
+    factors = [
+        # 'mc', 'bp',
+        'quality', 'value', 
+        'momentum', 'volatility', 'liquidity', 'corrmarket',
+        'dailytech', 'hftech', 
+        ]
     start_date = '20210101'
     end_date = '20230301'
-    white_threshold = 0.8
+    white_threshold = 0.2
     value_type = 'preprocessed_factor_value'
     print(factor_name, start_date, end_date, white_threshold, value_type)
     single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
-    white_threshold = 0.618
-    value_type = 'preprocessed_factor_value'
-    print(factor_name, start_date, end_date, white_threshold, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
-    white_threshold = 0
-    value_type = 'preprocessed_factor_value'
-    print(factor_name, start_date, end_date, white_threshold, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
+    # white_threshold = 0.618
+    # value_type = 'preprocessed_factor_value'
+    # print(factor_name, start_date, end_date, white_threshold, value_type)
+    # single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
+    # white_threshold = 0
+    # value_type = 'preprocessed_factor_value'
+    # print(factor_name, start_date, end_date, white_threshold, value_type)
+    # single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)

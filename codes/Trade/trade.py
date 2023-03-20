@@ -39,14 +39,14 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230315'
+trade_date = '20230320'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['600739', '002611', '000555', '600887', '600690', '002920', '300957', '002415']
+buy_list = ['000538', '603259']
 
-sell_list= ['002430', '300040', '688291', '603258', '688662', '300467', '600590']
+sell_list= ['002624']
 
 position.extend(buy_list)
 position = list(set(position) - set(sell_list))
@@ -64,11 +64,14 @@ is_neutral = 0
 factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
 halflife_ic_mean = 250
 halflife_ic_cov = 750
-lambda_ic = 50
-lambda_i = 50
+halflife_h_mean = 750
+lambda_ic = 60
+lambda_s = 0
+lambda_h = 30
+lambda_i = 10
 
 factors = [
-    'mc', 'bp', 
+    # 'mc', 'bp', 
     'quality', 'value', 
     'momentum', 'volatility', 'liquidity', 'corrmarket',
     'dailytech', 'hftech', 
@@ -95,7 +98,7 @@ print('factors: ', factors)
 print('ic_sub: ', ic_sub)
 
 #读ic
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/ic?charset=utf8")
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
 
 sql_ic = """
 select trade_date, factor_name, 
@@ -107,28 +110,63 @@ where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 and white_threshold = {white_threshold}
-and is_neutral = {is_neutral}
 """
-sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold, is_neutral=is_neutral)
+sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold)
 df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
 df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
 df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
 df_ic_d = df_ic.loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+
 ic_dic = {'d':df_ic_d, 'w':df_ic_w, 'm':df_ic_m}
+
+sql_h = """
+select trade_date, factor_name, 
+(h_m+rank_h_m)/2 as h_m, 
+(h_w+rank_h_w)/2 as h_w, 
+(h_d+rank_h_d)/2 as h_d
+from tdailyh
+where factor_name in {factor_names}
+and trade_date >= {start_date}
+and trade_date <= {end_date}
+and white_threshold = {white_threshold}
+"""
+sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold)
+df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name'])
+df_h_m = df_h.loc[:, 'h_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
+df_h_w = df_h.loc[:, 'h_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
+df_h_d = df_h.loc[:, 'h_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+
+h_dic = {'d':df_h_d, 'w':df_h_w, 'm':df_h_m}
+
 weight_dic = {}
 for t in ic_dic.keys():
     df_ic = ic_dic[t]
+    df_h = h_dic[t]
+    
     ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean().fillna(0)
+    ic_std = df_ic.ewm(halflife=halflife_ic_cov).std().fillna(0)
     ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
+    ic_corr = df_ic.ewm(halflife=halflife_ic_cov).corr().fillna(0)
+    
+    h_mean = df_h.ewm(halflife=halflife_h_mean).mean().fillna(0)
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     for trade_date in trade_dates:
-        mat_ic = ic_cov.loc[trade_date, :].values
-        mat_ic = mat_ic / np.trace(mat_ic)
+        mat_ic_cov = ic_cov.loc[trade_date, :].values
+        mat_ic_cov = mat_ic_cov / np.trace(mat_ic_cov)
+        
+        mat_s = np.diag(np.diag(mat_ic_cov))
+        mat_s = mat_s / np.trace(mat_s)
+        
+        mat_h = np.diag(h_mean.loc[trade_date, :].values)
+        mat_h = mat_h / np.trace(mat_h)
+        
         mat_i = np.diag(np.ones(len(factors)))
         mat_i = mat_i / np.trace(mat_i)
-        mat = lambda_ic * mat_ic + lambda_i * mat_i
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values / 2)
+        
+        mat = lambda_ic * mat_ic_cov + lambda_s * mat_s + lambda_h * mat_h + lambda_i * mat_i
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values)
+    
     weight_dic[t] = tools.standardize(weight)
 weight_dic['d'] = 1 * weight_dic['d']
 weight_dic['w'] = 1 * weight_dic['w']
@@ -168,7 +206,7 @@ df_hold = DataFrame(hold_dic).T
 df_hold.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益'] + factors
 df_hold.index.name = '股票代码'
 df_hold.reset_index(inplace=True)
-df_hold = df_hold.groupby('一级行业').apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
+df_hold = df_hold.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_hold.index = range(len(df_hold))
 #print(df_hold)
 
@@ -187,11 +225,13 @@ print('---%s---'%trade_date)
 
 ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
 r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-n = 10
+n = 5
 
 buy_dic = {}
-for ind in ind_num_dic.keys():
-    stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_1']==ind])
+# ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_3'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
+
+for ind in gc.WHITE_INDUSTRY_LIST:
+    stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_3']==ind])
     stocks = list(set(stocks).intersection(stocks_all) - set(position))
     ret_tmp = ret.loc[stocks].sort_values(ascending=False)
     r_hat_rank_tmp = r_hat_rank.loc[stocks].sort_values(ascending=False)
@@ -211,7 +251,7 @@ df_buy = DataFrame(buy_dic).T
 df_buy.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益'] + factors
 df_buy.index.name = '股票代码'
 df_buy.reset_index(inplace=True)
-df_buy = df_buy.groupby('一级行业').apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
+df_buy = df_buy.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_buy.index = range(len(df_buy))
 # if __name__ == '__main__':
 #     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
