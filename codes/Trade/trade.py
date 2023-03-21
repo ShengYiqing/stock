@@ -18,6 +18,7 @@ sys.path.append(Config.GLOBALCONFIG_PATH)
 
 import tools
 import Global_Config as gc
+from sklearn.linear_model import LinearRegression
 
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -39,7 +40,7 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230320'
+trade_date = '20230321'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -59,16 +60,12 @@ print(position)
 print('----持股数量----')
 print('持股数量: ', len(position))
 
-white_threshold = 0.8
+white_threshold = 0.382
 is_neutral = 0
 factor_value_type = 'neutral_factor_value' if is_neutral else 'preprocessed_factor_value'
-halflife_ic_mean = 250
-halflife_ic_cov = 750
-halflife_h_mean = 750
-lambda_ic = 60
-lambda_s = 0
-lambda_h = 30
-lambda_i = 10
+halflife_mean = 250
+halflife_cov = 750
+lambda_i = 0.01
 
 factors = [
     # 'mc', 'bp', 
@@ -86,16 +83,16 @@ for factor in factors:
 ic_sub = Series(ic_sub)
 
 end_date = trade_date
-start_date = tools.trade_date_shift(trade_date, 2500)
+start_date = trade_date
 trade_dates = tools.get_trade_cal(start_date, end_date)
+start_date_ic = tools.trade_date_shift(start_date, 1250)
 
 print('----参数----')
-print('halflife_ic_mean: ', halflife_ic_mean)
-print('halflife_ic_cov: ', halflife_ic_cov)
-print('lambda_ic: ', lambda_ic)
-print('lambda_i: ', lambda_i)
+print('halflife_mean: ', halflife_mean)
+print('halflife_cov: ', halflife_cov)
 print('factors: ', factors)
 print('ic_sub: ', ic_sub)
+print('lambda_i: ', lambda_i)
 
 #读ic
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
@@ -111,7 +108,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 and white_threshold = {white_threshold}
 """
-sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold)
+sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date, white_threshold=white_threshold)
 df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name'])
 df_ic_m = df_ic.loc[:, 'ic_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
 df_ic_w = df_ic.loc[:, 'ic_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
@@ -130,7 +127,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 and white_threshold = {white_threshold}
 """
-sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date, end_date=end_date, white_threshold=white_threshold)
+sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date, white_threshold=white_threshold)
 df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name'])
 df_h_m = df_h.loc[:, 'h_m'].unstack().loc[:, factors].shift(21).fillna(method='ffill')
 df_h_w = df_h.loc[:, 'h_w'].unstack().loc[:, factors].shift(6).fillna(method='ffill')
@@ -138,34 +135,56 @@ df_h_d = df_h.loc[:, 'h_d'].unstack().loc[:, factors].shift(2).fillna(method='ff
 
 h_dic = {'d':df_h_d, 'w':df_h_w, 'm':df_h_m}
 
+sql_tr = """
+select trade_date, factor_name, 
+(tr_m+rank_tr_m)/2 as tr_m, 
+(tr_w+rank_tr_w)/2 as tr_w, 
+(tr_d+rank_tr_d)/2 as tr_d
+from tdailytr
+where factor_name in {factor_names}
+and trade_date >= {start_date}
+and trade_date <= {end_date}
+and white_threshold = {white_threshold}
+"""
+sql_tr = sql_tr.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date, white_threshold=white_threshold)
+df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name'])
+df_tr_m = df_tr.loc[:, 'tr_m'].unstack().loc[:, factors].fillna(method='ffill')
+df_tr_w = df_tr.loc[:, 'tr_w'].unstack().loc[:, factors].fillna(method='ffill')
+df_tr_d = df_tr.loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
+
+tr_dic = {'d':df_tr_d, 'w':df_tr_w, 'm':df_tr_m}
+
 weight_dic = {}
 for t in ic_dic.keys():
     df_ic = ic_dic[t]
     df_h = h_dic[t]
+    df_tr = tr_dic[t]
     
-    ic_mean = df_ic.ewm(halflife=halflife_ic_mean).mean().fillna(0)
-    ic_std = df_ic.ewm(halflife=halflife_ic_cov).std().fillna(0)
-    ic_cov = df_ic.ewm(halflife=halflife_ic_cov).cov().fillna(0)
-    ic_corr = df_ic.ewm(halflife=halflife_ic_cov).corr().fillna(0)
+    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
     
-    h_mean = df_h.ewm(halflife=halflife_h_mean).mean().fillna(0)
+    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
+    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
+    
+    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    
+    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
+    weight.index.name = 'trade_date'
     for trade_date in trade_dates:
-        mat_ic_cov = ic_cov.loc[trade_date, :].values
-        mat_ic_cov = mat_ic_cov / np.trace(mat_ic_cov)
+        mat_ic_corr = ic_corr.loc[trade_date, :]
+        mat_ic_corr_tune = mat_ic_corr ** 3
         
-        mat_s = np.diag(np.diag(mat_ic_cov))
-        mat_s = mat_s / np.trace(mat_s)
+        ic_s = ic_std.loc[trade_date, :]
         
-        mat_h = np.diag(h_mean.loc[trade_date, :].values)
-        mat_h = mat_h / np.trace(mat_h)
+        h = h_mean.loc[trade_date, :] ** 0.25
+        tr = tr_mean.loc[trade_date, :] ** 0.5
+        mat_ic_s_tune = np.diag(ic_s * h / tr)
         
-        mat_i = np.diag(np.ones(len(factors)))
-        mat_i = mat_i / np.trace(mat_i)
-        
-        mat = lambda_ic * mat_ic_cov + lambda_s * mat_s + lambda_h * mat_h + lambda_i * mat_i
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values)
+        mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
+        mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
+        mat = mat + lambda_i * np.diag(np.ones(len(factors)))
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :]).values)
     
     weight_dic[t] = tools.standardize(weight)
 weight_dic['d'] = 1 * weight_dic['d']
@@ -182,6 +201,41 @@ df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 r_hat = DataFrame(dtype='float64')
 for factor in factors:
     r_hat = r_hat.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
+
+x = r_hat
+
+sql = """
+select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+from label.tdailylabel tlabel
+left join indsw.tindsw tind
+on tlabel.stock_code = tind.stock_code
+left join factor.tfactormc tmc
+on tlabel.stock_code = tmc.stock_code
+and tlabel.trade_date = tmc.trade_date
+left join factor.tfactorbp tbp
+on tlabel.stock_code = tbp.stock_code
+and tlabel.trade_date = tbp.trade_date
+where tlabel.trade_date = {trade_date}
+and tlabel.stock_code in {stock_codes}""".format(trade_date=trade_date, stock_codes=tuple(x.columns))
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+df_n = pd.read_sql(sql, engine)
+df_n = df_n.set_index(['trade_date', 'stock_code'])
+x = x.stack()
+x.name = 'x'
+data = pd.concat([x, df_n], axis=1).dropna()
+
+def f(data):
+    X = pd.concat([pd.get_dummies(data.ind)], axis=1).fillna(0)
+    y = data.loc[:, 'x']
+    model = LinearRegression(n_jobs=-1)
+    model.fit(X, y)
+    y_predict = Series(model.predict(X), index=y.index)
+    
+    res = tools.standardize(tools.winsorize(y - y_predict))
+    return res
+x_n = data.groupby('trade_date').apply(f).unstack()
+x_n = x_n.reset_index(0, drop=True).unstack().T
+r_hat = x_n
 
 stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
 r_hat = DataFrame(r_hat, columns=stocks_all)

@@ -19,7 +19,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
-start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
 # start_date = '20100101'
 
 

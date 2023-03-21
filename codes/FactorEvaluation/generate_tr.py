@@ -27,34 +27,37 @@ def f(factor_name, white_threshold, start_date, end_date):
     print(white_threshold)
     print(datetime.datetime.now())
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    
-    sql = tools.generate_sql_y_x([factor_name], start_date, end_date, white_threshold)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
+    sql = tools.generate_sql_y_x([factor_name], start_date_sql, end_date, white_threshold, factor_value_type='factor_value')
     
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    y_d = df.loc[:, 'r_daily'].unstack()
-    y_w = df.loc[:, 'r_weekly'].unstack()
-    y_m = df.loc[:, 'r_monthly'].unstack()
-    x = df.loc[:, factor_name].unstack()
+    df = df.loc[:, [factor_name]].dropna(subset=factor_name)
     
-    ic_d = x.corrwith(y_d, axis=1)
-    ic_w = x.corrwith(y_w, axis=1)
-    ic_m = x.corrwith(y_m, axis=1)
+    x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
     
-    rank_ic_d = x.corrwith(y_d, axis=1, method='spearman')
-    rank_ic_w = x.corrwith(y_w, axis=1, method='spearman')
-    rank_ic_m = x.corrwith(y_m, axis=1, method='spearman')
+    tr_d = x.corrwith(x.shift(), axis=1)
+    tr_w = x.corrwith(x.shift(5), axis=1)
+    tr_m = x.corrwith(x.shift(20), axis=1)
     
-    df = DataFrame({'IC_D':ic_d, 'RANK_IC_D':rank_ic_d, 
-                    'IC_W':ic_w, 'RANK_IC_W':rank_ic_w, 
-                    'IC_M':ic_m, 'RANK_IC_M':rank_ic_m, 
+    tr_r_d = x.corrwith(x.shift(), axis=1, method='spearman') ** 2
+    tr_r_w = x.corrwith(x.shift(5), axis=1, method='spearman') ** 2
+    tr_r_m = x.corrwith(x.shift(20), axis=1, method='spearman') ** 2
+    
+    df = DataFrame({'TR_D':tr_d,
+                    'TR_W':tr_w,
+                    'TR_M':tr_m,
+                    'RANK_TR_D':tr_r_d,
+                    'RANK_TR_W':tr_r_w,
+                    'RANK_TR_M':tr_r_m,
                     })
+    df = df.loc[df.index>=start_date, :]
     df.loc[:, 'white_threshold'] = '%s'%white_threshold
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df.loc[:, 'FACTOR_NAME'] = factor_table_name[7:]
+    df.loc[:, 'FACTOR_NAME'] = factor_name
     df.loc[:, 'industry'] = 'WHITE'
 
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
-    df.to_sql('tdailyic', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tdailytr', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
     
 if __name__ == '__main__':
@@ -64,11 +67,11 @@ if __name__ == '__main__':
     
     factors = [
         'mc', 'bp', 
-        'quality', 'value', 
+        'quality', 'value',
         'momentum', 'volatility', 'liquidity', 'corrmarket',
         'dailytech', 'hftech', 
         ]
-    # factors = ['momentum']
+    # factors = ['momentum', 'value']
     white_thresholds = [0, 0.2, 1-0.618, 0.618, 0.8]
     # white_thresholds = [0.9]
     pool = mp.Pool(4)
