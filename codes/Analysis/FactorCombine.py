@@ -37,7 +37,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20120101'
+start_date = '20220101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -137,14 +137,13 @@ for t in ic_dic.keys():
         ic_s = ic_std.loc[trade_date, :]
         
         h = h_mean.loc[trade_date, :] ** 0.25
-        tr = tr_mean.loc[trade_date, :] ** 0.5
-        tr[tr<=0] = 0.01
-        mat_ic_s_tune = np.diag(ic_s * h / tr)
+        tr = tr_mean.loc[trade_date, :]
+        mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
         mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
         mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :]).values)
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
     
     weight_dic[t] = tools.standardize(weight)
 weight_dic['d'] = 1 * weight_dic['d']

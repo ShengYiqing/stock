@@ -178,13 +178,13 @@ for t in ic_dic.keys():
         ic_s = ic_std.loc[trade_date, :]
         
         h = h_mean.loc[trade_date, :] ** 0.25
-        tr = tr_mean.loc[trade_date, :] ** 0.5
-        mat_ic_s_tune = np.diag(ic_s * h / tr)
+        tr = tr_mean.loc[trade_date, :]
+        mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
         mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
         mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :]).values)
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
     
     weight_dic[t] = tools.standardize(weight)
 weight_dic['d'] = 1 * weight_dic['d']
@@ -262,7 +262,8 @@ df_hold.index.name = '股票代码'
 df_hold.reset_index(inplace=True)
 df_hold = df_hold.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_hold.index = range(len(df_hold))
-#print(df_hold)
+df_hold.loc[:, '持仓'] = 1
+# print(df_hold)
 
 df = df.loc[trade_date, :]
 stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
@@ -307,6 +308,12 @@ df_buy.index.name = '股票代码'
 df_buy.reset_index(inplace=True)
 df_buy = df_buy.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_buy.index = range(len(df_buy))
+df_buy.loc[:, '持仓'] = 0
+df_print = pd.concat([df_hold, df_buy])
+df_print = df_print.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
+df_print.index = range(len(df_print))
+df_print = df_print.loc[:, ['股票代码', '股票名称', '一级行业', '二级行业', '三级行业', '持仓', '排名', '预期收益']+factors]
+# print(df_buy)
 # if __name__ == '__main__':
 #     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 #     sql_stock_ind = """
