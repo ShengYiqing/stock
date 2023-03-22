@@ -37,7 +37,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20220101'
+start_date = '20120101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -145,9 +145,9 @@ for t in ic_dic.keys():
         mat = mat + lambda_i * np.diag(np.ones(len(factors)))
         weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
     
-    weight_dic[t] = tools.standardize(weight)
-weight_dic['d'] = 1 * weight_dic['d']
-weight_dic['w'] = 1 * weight_dic['w']
+    weight_dic[t] = weight.div(weight.std(1), axis=0)
+weight_dic['d'] = 3 * weight_dic['d']
+weight_dic['w'] = 2 * weight_dic['w']
 weight_dic['m'] = 1 * weight_dic['m']
 weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
 
@@ -190,7 +190,7 @@ def f(data):
     model.fit(X, y)
     y_predict = Series(model.predict(X), index=y.index)
     
-    res = tools.standardize(tools.winsorize(y - y_predict))
+    res = y - y_predict
     return res
 x_n = data.groupby('trade_date').apply(f).unstack()
 x_n.reset_index(0, drop=True, inplace=True)
