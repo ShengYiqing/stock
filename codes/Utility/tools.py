@@ -252,10 +252,13 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
     factor = factor.astype(float)
     return factor
     
-def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_trade=True, white_ind=True, factor_value_type='preprocessed_factor_value'):
+def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0.382, is_trade=True, factor_value_type_dic=None):
+    if factor_value_type_dic == None:
+        factor_value_type_dic = {factor_name: 'preprocessed_factor_value' for factor_name in factor_names}
+        
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     for factor_name in factor_names:
-        sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type)
+        sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type_dic[factor_name])
     sql += ' from label.tdailylabel t1 '
     for factor_name in factor_names:
         sql += """ left join factor.tfactor{factor_name} t{factor_name} 
@@ -265,17 +268,15 @@ def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_t
         sql += """ left join whitelist.tdailywhitelist t2
                    on t1.trade_date = t2.trade_date
                    and t1.stock_code = t2.stock_code """
-    if white_ind:
-        sql += """ left join indsw.tindsw t3
-                   on t1.stock_code = t3.stock_code """
+    sql += """ left join indsw.tindsw t3
+               on t1.stock_code = t3.stock_code """
     sql += """ where t1.trade_date >= \'{start_date}\'
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
         sql += " and t1.is_trade = 1 "
     if white_threshold:
-        sql += " and ( (t2.score) > {white_threshold} or (t2.top = 1)) ".format(white_threshold=white_threshold)
-    if white_ind:
-        sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
+        sql += " and t2.score > {white_threshold} ".format(white_threshold=white_threshold)
+    sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
 
 

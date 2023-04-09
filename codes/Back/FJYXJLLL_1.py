@@ -25,7 +25,7 @@ from sqlalchemy.types import VARCHAR
 def generate_factor(start_date, end_date):
     
     shift = 500
-    formula = ('t3.n_cashflow_act / (t1.money_cap + t1.notes_receiv + t1.accounts_receiv + t1.prepayment + t1.inventories + t1.fix_assets_total + t1.produc_bio_assets + t1.oil_and_gas_assets + t1.intan_assets + t1.receiv_financing + t1.contract_assets)')
+    formula = 't3.n_cashflow_act / t1.total_hldr_eqy_inc_min_int'
     table_name_tmp = 'tfactorfjyxjlll'
     methods = ['', 'd', 's']
     for method in methods:

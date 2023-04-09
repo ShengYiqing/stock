@@ -25,7 +25,7 @@ from sqlalchemy.types import VARCHAR
 def generate_factor(start_date, end_date):
     
     shift = 500
-    formula = '(t2.revenue - t2.oper_cost) / t2.revenue'
+    formula = '(t2.revenue - t2.oper_cost) / t1.total_hldr_eqy_inc_min_int'
     table_name_tmp = 'tfactorfmll'
     methods = ['', 'd', 's']
     for method in methods:

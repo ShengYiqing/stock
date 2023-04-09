@@ -25,15 +25,16 @@ from sqlalchemy.types import VARCHAR
 def generate_factor(start_date, end_date):
     
     shift = 500
-    formula = '(t1.money_cap + t1.notes_receiv + t1.accounts_receiv + t1.prepayment + t1.inventories + t1.fix_assets_total + t1.produc_bio_assets + t1.oil_and_gas_assets + t1.intan_assets + t1.receiv_financing + t1.contract_assets) / t1.total_assets'
+    formula = '(t1.money_cap + t1.inventories + t1.fix_assets_total + t1.produc_bio_assets + t1.oil_and_gas_assets + t1.intan_assets) / t1.total_hldr_eqy_inc_min_int'
     table_name_tmp = 'tfactorfjyzcl'
     methods = ['', 'd', 's']
     for method in methods:
         table_name = table_name_tmp + method
         factor = tools.generate_finance_formula(formula, start_date, end_date, shift, method)
         
-        factor = factor.replace(np.inf, np.nan)
-        factor = factor.replace(-np.inf, np.nan)
+        factor[factor<=0] = np.nan
+        factor.replace(np.inf, np.nan, inplace=True)
+        factor.replace(-np.inf, np.nan, inplace=True)
         factor.index.name = 'trade_date'
         factor.columns.name = 'stock_code'
         
@@ -47,6 +48,6 @@ def generate_factor(start_date, end_date):
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
     start_date = '20100101'
     generate_factor(start_date, end_date)

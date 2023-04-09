@@ -20,17 +20,7 @@ from sqlalchemy import create_engine
 
 import multiprocessing as mp
 
-def f(factor_name, white_threshold, start_date, end_date):
-    factor_table_name = 'tfactor' + factor_name
-
-    print(factor_table_name)
-    print(white_threshold)
-    print(datetime.datetime.now())
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    start_date_sql = tools.trade_date_shift(start_date, 60)
-    sql = tools.generate_sql_y_x([factor_name], start_date_sql, end_date, white_threshold, factor_value_type='factor_value')
-    
-    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+def f(factor_name, df, start_date, end_date):
     df = df.loc[:, [factor_name]].dropna(subset=factor_name)
     
     x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
@@ -51,10 +41,8 @@ def f(factor_name, white_threshold, start_date, end_date):
                     'RANK_TR_M':tr_r_m,
                     })
     df = df.loc[df.index>=start_date, :]
-    df.loc[:, 'white_threshold'] = '%s'%white_threshold
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df.loc[:, 'FACTOR_NAME'] = factor_name
-    df.loc[:, 'industry'] = 'WHITE'
 
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
     df.to_sql('tdailytr', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
@@ -66,17 +54,19 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'mc', 'bp', 
-        'quality', 'value',
+        'operation', 'profitability', 'growth', 
         'momentum', 'volatility', 'liquidity', 'corrmarket',
         'dailytech', 'hftech', 
         ]
-    # factors = ['momentum', 'value']
-    white_thresholds = [0, 0.2, 1-0.618, 0.618, 0.8]
-    # white_thresholds = [0.9]
+    neutral_list = ['operation', 'profitability', 'growth', ]
+    
+    factor_value_type_dic = {factor: 'neutral_factor_value' if factor in neutral_list else 'preprocessed_factor_value' for factor in factors}
+    
+    sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic)
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     pool = mp.Pool(4)
     for factor in factors:
-        for white_threshold in white_thresholds:
-            pool.apply_async(func=f, args=(factor, white_threshold, start_date, end_date))
+        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_daily', 'r_weekly', 'r_monthly', factor]], start_date, end_date))
     pool.close()
     pool.join()
