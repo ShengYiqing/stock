@@ -47,12 +47,15 @@ def generate_factor(start_date, end_date):
     VOL.replace(0, np.nan, inplace=True)
     VOL = np.log(VOL)
     CLOSE = np.log(CLOSE)
-    df = CLOSE.ewm(halflife=2.5).corr(VOL)
+    df = CLOSE.ewm(halflife=5).corr(VOL)
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
+    df.index.name = 'trade_date'
+    df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    df_n = tools.neutralize(df)
+    df = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df = df.stack()
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

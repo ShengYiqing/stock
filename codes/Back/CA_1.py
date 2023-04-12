@@ -26,27 +26,32 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select STOCK_CODE, END_DATE TRADE_DATE, PLEDGE_RATIO from ttspledgestat
-    where END_DATE >= {start_date}
-    and END_DATE <= {end_date}
+    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t1.VOL, t1.AMOUNT from ttsdaily t1
+    where t1.trade_date >= {start_date}
+    and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['TRADE_DATE', 'STOCK_CODE'])
-    PLEDGE_RATIO = df.loc[:, 'PLEDGE_RATIO']
-    PLEDGE_RATIO = PLEDGE_RATIO.unstack()
-    PLEDGE_RATIO = np.log(PLEDGE_RATIO)
-    trade_dates = tools.get_trade_cal(start_date, end_date)
-    PLEDGE_RATIO = DataFrame(PLEDGE_RATIO, index=trade_dates).fillna(method='ffill')
-    PLEDGE_RATIO.index.name = 'TRADE_DATE'
-    PLEDGE_RATIO.replace(np.inf, np.nan, inplace=True)
-    PLEDGE_RATIO.replace(-np.inf, np.nan, inplace=True)
-    df = PLEDGE_RATIO.copy()
+    VOL = df.loc[:, 'VOL']
+    AMOUNT = df.loc[:, 'AMOUNT']
+    CLOSE = df.loc[:, 'CLOSE']
+    VOL = VOL.unstack()
+    AMOUNT = AMOUNT.unstack()
+    CLOSE = CLOSE.unstack()
+    AVG = AMOUNT / VOL
+    AVG = np.log(AVG)
+    CLOSE = np.log(CLOSE)
+    CA = CLOSE - AVG
+    df = CA.copy()
+    df.index.name = 'trade_date'
+    df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    df_n = tools.neutralize(df)
+    df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorpledgeratio', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorca', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

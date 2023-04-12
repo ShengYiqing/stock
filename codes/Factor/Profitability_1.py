@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 1500)
+    start_date_sql = tools.trade_date_shift(start_date, 750)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     sql = """
     select ann_date, end_date, ann_type, stock_code, financial_index, financial_value 
@@ -53,11 +53,9 @@ def generate_factor(start_date, end_date):
         
         jzc = df_tmp.loc['jzc'].loc[:, 'financial_value'].unstack()
         jzc[jzc<=0] = np.nan
-        jzc_ttm = jzc.rolling(2, min_periods=1).mean().rolling(4, min_periods=1).mean()
-        jzc_ttm[jzc.isna()] = np.nan
-        gmjlr_ttm = gmjlr.rolling(4, min_periods=1).mean()
-        gmjlr_ttm[gmjlr.isna()] = np.nan
-        profitability = gmjlr_ttm / jzc_ttm
+        jzc = jzc.rolling(2, min_periods=1).mean()
+        
+        profitability = gmjlr / jzc
         profitability.fillna(method='ffill', limit=4, inplace=True)
         dic[trade_date] = profitability.iloc[-1]
     factor = DataFrame(dic).T
@@ -65,7 +63,8 @@ def generate_factor(start_date, end_date):
     factor.columns.name = 'stock_code'
     
     factor_p = tools.standardize(tools.winsorize(factor))
-    df_new = pd.concat([factor, factor_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    factor_n = tools.neutralize(factor)
+    df_new = pd.concat([factor, factor_p, factor_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

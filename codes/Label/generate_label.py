@@ -61,6 +61,10 @@ r_d_p = tools.standardize(tools.winsorize(r_d))
 r_w_p = tools.standardize(tools.winsorize(r_w))
 r_m_p = tools.standardize(tools.winsorize(r_m))
 
+r_d_n = tools.neutralize(r_d.dropna(how='all'))
+r_w_n = tools.neutralize(r_w.dropna(how='all'))
+r_m_n = tools.neutralize(r_m.dropna(how='all'))
+
 yiziban = (HIGH == LOW).astype(int)
 suspend = suspend.copy()
 suspend[suspend.notna()] = 1
@@ -97,6 +101,9 @@ df = pd.concat({'R_DAILY':r_d,
                 'PREPROCESSED_R_DAILY':r_d_p, 
                 'PREPROCESSED_R_WEEKLY':r_w_p, 
                 'PREPROCESSED_R_MONTHLY':r_m_p, 
+                'NEUTRAL_R_DAILY':r_d_n, 
+                'NEUTRAL_R_WEEKLY':r_w_n, 
+                'NEUTRAL_R_MONTHLY':r_m_n, 
                 'IS_TRADE':is_trade}, axis=1)
 df = df.stack()
 

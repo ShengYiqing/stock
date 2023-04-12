@@ -5,13 +5,14 @@ from pandas import Series, DataFrame
 import matplotlib.pyplot as plt
 import datetime
 import time
-import DataProcessor as DP
 from scipy.stats import rankdata
 import tushare as ts
 import Global_Config as gc
 import statsmodels.api as sm
 import multiprocessing as mp
 from sqlalchemy import create_engine
+from sklearn.linear_model import LinearRegression
+import pdb
 
 def colinearity_analysis(x1, x2, trade_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
@@ -252,7 +253,7 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
     factor = factor.astype(float)
     return factor
     
-def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0.382, is_trade=True, factor_value_type_dic=None):
+def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_trade=True, factor_value_type_dic=None):
     if factor_value_type_dic == None:
         factor_value_type_dic = {factor_name: 'preprocessed_factor_value' for factor_name in factor_names}
         
@@ -386,6 +387,47 @@ def reg_ts(df, n):
     
     return b, e
 
+def neutralize(data):
+    if isinstance(data, DataFrame):
+        data.index.name = 'trade_date'
+        data.columns.name = 'stock_code'
+        engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+        sql = """
+        select tmc.trade_date trade_date, tmc.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+        from factor.tfactormc tmc
+        left join indsw.tindsw tind
+        on tmc.stock_code = tind.stock_code
+        left join factor.tfactorbp tbp
+        on tmc.stock_code = tbp.stock_code
+        and tmc.trade_date = tbp.trade_date
+        where tmc.trade_date in {trade_dates}
+        and tmc.stock_code in {stock_codes}
+        """.format(trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
+        
+        df_n = pd.read_sql(sql, engine)
+        df_n = df_n.set_index(['trade_date', 'stock_code'])
+        x = data.stack()
+        x.name = 'x'
+        data = pd.concat([x, df_n], axis=1).dropna()
+
+        def g(data):
+            # pdb.set_trace()
+            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
+            # X = data.loc[:, ['mc', 'bp']]
+            # print(X)
+            y = data.loc[:, 'x']
+            # model = LinearRegression(n_jobs=-1)
+            # model.fit(X, y)
+            # y_predict = Series(model.predict(X), index=y.index)
+            y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.01*np.identity(len(X.T))).dot(X.T).dot(y))
+            res = standardize(winsorize(y - y_predict))
+            return res
+        x_n = data.groupby('trade_date', as_index=False).apply(g).reset_index(0, drop=True)
+        # x_n.name = 'neutral_factor_value'
+        return x_n.unstack()
+    else:
+        return None
+    
 def centralize(data):
     return data.subtract(data.mean(1), 0)
 

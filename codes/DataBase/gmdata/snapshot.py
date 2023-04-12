@@ -76,9 +76,9 @@ def f(date, stock):
         print(date, stock, ' fail')
 if __name__ == '__main__':
     date = datetime.datetime.today().strftime('%Y%m%d')
+    # date = '20230411'
     start_date = date
     end_date = date
-    # date = '20221010'
     trade_cal = tools.get_trade_cal(start_date=date, end_date=date)
     if len(trade_cal) == 0:
         sys.exit()

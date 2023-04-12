@@ -28,8 +28,10 @@ def f(factor, start_date, end_date):
     x = df.loc[:, 'preprocessed_factor_value'].unstack()
     
     sql = """
-    select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+    select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
     from label.tdailylabel tlabel
+    left join indsw.tindsw tind
+    on tlabel.stock_code = tind.stock_code
     left join factor.tfactormc tmc
     on tlabel.stock_code = tmc.stock_code
     and tlabel.trade_date = tmc.trade_date
@@ -47,8 +49,8 @@ def f(factor, start_date, end_date):
     data = pd.concat([x, df_n], axis=1).dropna()
 
     def g(data):
-        # X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
-        X = data.loc[:, ['mc', 'bp']]
+        X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
+        # X = data.loc[:, ['mc', 'bp']]
         # print(X)
         y = data.loc[:, 'x']
         model = LinearRegression(n_jobs=-1)
@@ -69,7 +71,6 @@ if __name__ == '__main__':
     # start_date = '20100101'
     trade_cal = tools.get_trade_cal(start_date, end_date) 
     factors = [
-        'operation', 
         'profitability', 
         'growth', 
         ]

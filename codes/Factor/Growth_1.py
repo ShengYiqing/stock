@@ -50,29 +50,18 @@ def generate_factor(start_date, end_date):
         gmjlr['YYYY'] = [ind[:4] for ind in gmjlr.index]
         gmjlr = gmjlr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
         gmjlr = gmjlr.loc[:, cols]
-        gmjlr_ttm = gmjlr.rolling(4, min_periods=1).mean()
-        gmjlr_ttm[gmjlr.isna()] = np.nan
         
         yysr = df_tmp.loc['yysr'].loc[:, 'financial_value'].unstack()
         cols = yysr.columns
         yysr['YYYY'] = [ind[:4] for ind in yysr.index]
         yysr = yysr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
         yysr = yysr.loc[:, cols]
-        yysr_ttm = yysr.rolling(4, min_periods=1).mean()
-        yysr_ttm[yysr.isna()] = np.nan
         
-        # jzc = df_tmp.loc['jzc'].loc[:, 'financial_value'].unstack()
-        # jzc[jzc<=0] = np.nan
-        # jzc_ttm = jzc.rolling(2, min_periods=1).mean().rolling(4, min_periods=1).mean()
-        # jzc_ttm[jzc.isna()] = np.nan
-        
-        g_1 = np.log(yysr_ttm).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff().rolling(20, min_periods=12).mean()
-        g_2 = np.log(gmjlr_ttm).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff().rolling(20, min_periods=12).mean()
-        # g_3 = np.log(jzc_ttm).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff().rolling(20, min_periods=12).mean()
+        g_1 = np.log(yysr).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff()
+        g_2 = np.log(gmjlr).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff()
         
         g_1 = g_1.fillna(method='ffill', limit=4).iloc[-1].rank(pct=True)
         g_2 = g_2.fillna(method='ffill', limit=4).iloc[-1].rank(pct=True)
-        # g_3 = g_3.fillna(method='ffill', limit=4).iloc[-1].rank(pct=True)
         g = g_1 + g_2
         
         dic[trade_date] = g
@@ -81,7 +70,8 @@ def generate_factor(start_date, end_date):
     factor.columns.name = 'stock_code'
     
     factor_p = tools.standardize(tools.winsorize(factor))
-    df_new = pd.concat([factor, factor_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    factor_n = tools.neutralize(factor)
+    df_new = pd.concat([factor, factor_p, factor_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

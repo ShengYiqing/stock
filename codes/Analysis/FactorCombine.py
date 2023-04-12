@@ -20,13 +20,13 @@ halflife_cov = 750
 lambda_i = 0.01
 
 factors = [
-    'operation', 'profitability', 'growth', 
+    'profitability', 'growth', 
     'momentum', 'volatility', 'liquidity', 'corrmarket',
     'dailytech', 'hftech', 
     ]
 neutral_list = ['operation', 'profitability', 'growth', ]
 
-factor_value_type_dic = {factor: 'neutral_factor_value' if factor in neutral_list else 'preprocessed_factor_value' for factor in factors}
+factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
 
 ic_sub = {'mc':0.01, 'bp':0.01}
 # ic_sub = {}
@@ -133,13 +133,13 @@ for t in ic_dic.keys():
         ic_s = ic_std.loc[trade_date, :]
         
         h = h_mean.loc[trade_date, :] ** 0.25
-        tr = tr_mean.loc[trade_date, :]
-        mat_ic_s_tune = np.diag(ic_s * h)
+        tr = tr_mean.loc[trade_date, :] ** 0.25
+        mat_ic_s_tune = np.diag(ic_s)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
         mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
         mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :]).values)
     
     weight_dic[t] = weight.div(weight.std(1), axis=0)
 weight_dic['d'] = 3 * weight_dic['d']
@@ -159,38 +159,42 @@ for factor in factors:
     x = x.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
 
 
-# sql = """
-# select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
-# from label.tdailylabel tlabel
-# left join indsw.tindsw tind
-# on tlabel.stock_code = tind.stock_code
-# left join factor.tfactormc tmc
-# on tlabel.stock_code = tmc.stock_code
-# and tlabel.trade_date = tmc.trade_date
-# left join factor.tfactorbp tbp
-# on tlabel.stock_code = tbp.stock_code
-# and tlabel.trade_date = tbp.trade_date
-# where tlabel.trade_date in {trade_dates}
-# and tlabel.stock_code in {stock_codes}""".format(trade_dates=tuple(x.index), stock_codes=tuple(x.columns))
-# engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-# df_n = pd.read_sql(sql, engine)
-# df_n = df_n.set_index(['trade_date', 'stock_code'])
-# x = x.stack()
-# x.name = 'x'
-# data = pd.concat([x, df_n], axis=1).dropna()
+sql = """
+select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+from label.tdailylabel tlabel
+left join indsw.tindsw tind
+on tlabel.stock_code = tind.stock_code
+left join factor.tfactormc tmc
+on tlabel.stock_code = tmc.stock_code
+and tlabel.trade_date = tmc.trade_date
+left join factor.tfactorbp tbp
+on tlabel.stock_code = tbp.stock_code
+and tlabel.trade_date = tbp.trade_date
+where tlabel.trade_date in {trade_dates}
+and tlabel.stock_code in {stock_codes}""".format(trade_dates=tuple(x.index), stock_codes=tuple(x.columns))
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+df_n = pd.read_sql(sql, engine)
+df_n = df_n.set_index(['trade_date', 'stock_code'])
+x = x.stack()
+x.name = 'x'
+data = pd.concat([x, df_n], axis=1).dropna()
 
-# def f(data):
-#     X = pd.concat([pd.get_dummies(data.ind)], axis=1).fillna(0)
-#     y = data.loc[:, 'x']
-#     model = LinearRegression(n_jobs=-1)
-#     model.fit(X, y)
-#     y_predict = Series(model.predict(X), index=y.index)
+def f(data):
+    # pdb.set_trace()
+    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
+    # X = data.loc[:, ['mc', 'bp']]
+    # print(X)
+    y = data.loc[:, 'x']
+    # model = LinearRegression(n_jobs=-1)
+    # model.fit(X, y)
+    # y_predict = Series(model.predict(X), index=y.index)
+    y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.01*np.identity(len(X.T))).dot(X.T).dot(y))
     
-#     res = y - y_predict
-#     return res
-# x_n = data.groupby('trade_date').apply(f).unstack()
-# x_n.reset_index(0, drop=True, inplace=True)
-# x = x_n
+    res = y - y_predict
+    return res
+x_n = data.groupby('trade_date').apply(f).unstack()
+x_n.reset_index(0, drop=True, inplace=True)
+x = x_n
 
 #因子分布
 plt.figure(figsize=(16,12))

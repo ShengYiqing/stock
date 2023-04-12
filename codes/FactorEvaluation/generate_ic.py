@@ -52,13 +52,13 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'operation', 'profitability', 'growth', 
-        'momentum', 'volatility', 'liquidity', 'corrmarket',
+        'profitability', 'growth', 
+        'momentum', 'volatility', 'liquidity', 
         'dailytech', 'hftech', 
         ]
     neutral_list = ['operation', 'profitability', 'growth', ]
     
-    factor_value_type_dic = {factor: 'neutral_factor_value' if factor in neutral_list else 'preprocessed_factor_value' for factor in factors}
+    factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
     
     sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")

@@ -9,6 +9,24 @@ import tools
 from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
 import tools
+sql = """
+select trade_date, stock_code, r_daily
+from label.tdailylabel
+where trade_date >= '20200101'
+and trade_date <= '20230101'
+"""
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+df = df.unstack()
+benchmark = df.mean(1).cumsum()
+timing = df.mean(1).abs().cumsum()
+
+plt.figure(figsize=(16, 9))
+benchmark.plot()
+timing.plot()
+
+d_q = df[df.ge(df.quantile(0.9, axis=1), axis=0)].mean(1)
+
 
 sql = """
 SELECT t1.factor_value mc, t2.factor_value bp
@@ -93,6 +111,6 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'mc'
-x2 = 'mcc'
+x1 = 'profitability'
+x2 = 'growth'
 tools.colinearity_analysis(x1, x2, trade_date)

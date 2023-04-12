@@ -42,7 +42,8 @@ def generate_factor(start_date, end_date):
     factor_dic = {'sigma':-1, 'hl':-1, 
                   'hfsigma':-1, 'hfhl':-1, 
                   }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_threshold=None, is_trade=False, white_ind=False, factor_value_type='factor_value')
+    factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
@@ -52,8 +53,11 @@ def generate_factor(start_date, end_date):
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.mean(1)
     df = df.unstack()
+    df.index.name = 'trade_date'
+    df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    df_n = tools.neutralize(df)
+    df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
