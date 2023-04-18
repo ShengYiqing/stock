@@ -45,7 +45,7 @@ def generate_factor(start_date, end_date):
                   'hfpicorr': -1, 'hfpscorr': 1, 
                   'hfspread': 1, 'hfimbalance': 1}
     factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, factor_value_type_dic=factor_value_type_dic)
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)

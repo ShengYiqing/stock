@@ -55,7 +55,10 @@ def generate_factor(start_date, end_date):
         jzc[jzc<=0] = np.nan
         jzc = jzc.rolling(2, min_periods=1).mean()
         
-        profitability = gmjlr / jzc
+        gmjlr_ttm = gmjlr.rolling(4, min_periods=1).mean()
+        jzc_ttm = jzc.rolling(4, min_periods=1).mean()
+        
+        profitability = gmjlr_ttm / jzc_ttm
         profitability.fillna(method='ffill', limit=4, inplace=True)
         dic[trade_date] = profitability.iloc[-1]
     factor = DataFrame(dic).T

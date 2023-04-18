@@ -36,7 +36,7 @@ on t1.trade_date = t2.trade_date
 and t1.stock_code = t2.stock_code
 where t1.trade_date = '20230407'
 """
-sql = tools.generate_sql_y_x(['mc', 'bp'], '20230407', '20230407', white_threshold=0.2, factor_value_type='factor_value')
+sql = tools.generate_sql_y_x(['mc', 'bp'], '20230407', '20230407', white_threshold=0)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
 df = pd.read_sql(sql, engine)
 mc = df.mc.rank(pct=True)
@@ -51,6 +51,7 @@ for i in range(1, 4):
         mc_mask = ((i-1)/3<=mc) & (mc<=i/3)
         bp_mask = ((j-1)/3<=bp) & (bp<=j/3)
         df_tmp.loc[i, j] = (mc_mask & bp_mask).mean()
+print(df_tmp)
 df = DataFrame(np.arange(80).reshape(20, 4))
 df.rolling(10, win_type='exponential').mean()
 

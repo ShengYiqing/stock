@@ -253,11 +253,13 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
     factor = factor.astype(float)
     return factor
     
-def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_trade=True, factor_value_type_dic=None):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True, factor_value_type_dic=None, y_neutral=False):
     if factor_value_type_dic == None:
         factor_value_type_dic = {factor_name: 'preprocessed_factor_value' for factor_name in factor_names}
-        
-    sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
+    if y_neutral:
+        sql = ' select t1.trade_date, t1.stock_code, t1.neutral_r_daily r_daily, t1.neutral_r_weekly r_weekly, t1.neutral_r_monthly r_monthly '
+    else:
+        sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     for factor_name in factor_names:
         sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type_dic[factor_name])
     sql += ' from label.tdailylabel t1 '
@@ -265,19 +267,21 @@ def generate_sql_y_x(factor_names, start_date, end_date, white_threshold=0, is_t
         sql += """ left join factor.tfactor{factor_name} t{factor_name} 
                    on t1.trade_date = t{factor_name}.trade_date 
                    and t1.stock_code = t{factor_name}.stock_code """.format(factor_name=factor_name)
-    if white_threshold:
+    if is_white:
         sql += """ left join whitelist.tdailywhitelist t2
                    on t1.trade_date = t2.trade_date
                    and t1.stock_code = t2.stock_code """
-    sql += """ left join indsw.tindsw t3
-               on t1.stock_code = t3.stock_code """
+    if is_industry:
+        sql += """ left join indsw.tindsw t3
+                   on t1.stock_code = t3.stock_code """
     sql += """ where t1.trade_date >= \'{start_date}\'
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
         sql += " and t1.is_trade = 1 "
-    if white_threshold:
-        sql += " and t2.score > {white_threshold} ".format(white_threshold=white_threshold)
-    sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
+    if is_white:
+        sql += " and t2.white = 1 "
+    if is_industry:
+        sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
 
 

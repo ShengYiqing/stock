@@ -32,7 +32,7 @@ def generate_factor(start_date, end_date):
     and end_date <= {end_date}
     and substr(end_date, -4) in ('0331', '0630', '0930', '1231')
     and ann_type in ('定期报告', '业绩预告', '业绩快报')
-    and financial_index in ('zzc', 'yysr')
+    and financial_index in ('yysr', 'yycb')
     """.format(start_date=start_date_sql, end_date=end_date)
     df_sql = pd.read_sql(sql, engine).sort_values(['financial_index', 'end_date', 'stock_code', 'ann_date'])
 
@@ -51,16 +51,19 @@ def generate_factor(start_date, end_date):
         yysr = yysr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
         yysr = yysr.loc[:, cols]
         
-        zzc = df_tmp.loc['zzc'].loc[:, 'financial_value'].unstack()
-        zzc[zzc<=0] = np.nan
-        zzc = zzc.rolling(2, min_periods=1).mean()
+        yycb = df_tmp.loc['yycb'].loc[:, 'financial_value'].unstack()
+        cols = yycb.columns
+        yycb['YYYY'] = [ind[:4] for ind in yycb.index]
+        yycb = yycb.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        yycb = yycb.loc[:, cols]
         
         yysr_ttm = yysr.rolling(4, min_periods=1).mean()
-        zzc_ttm = zzc.rolling(4, min_periods=1).mean()
+        yycb_ttm = yycb.rolling(4, min_periods=1).mean()
         
-        operation = yysr_ttm / zzc_ttm
-        operation.fillna(method='ffill', limit=4, inplace=True)
-        dic[trade_date] = operation.iloc[-1]
+        gross = (yysr_ttm - yycb_ttm) / yysr_ttm
+        gross = gross.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+        gross.fillna(method='ffill', limit=4, inplace=True)
+        dic[trade_date] = gross.iloc[-1]
     factor = DataFrame(dic).T
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
@@ -71,7 +74,7 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactoroperation', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorgross', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

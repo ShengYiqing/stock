@@ -32,7 +32,7 @@ def generate_factor(start_date, end_date):
     and end_date <= {end_date}
     and substr(end_date, -4) in ('0331', '0630', '0930', '1231')
     and ann_type in ('定期报告', '业绩预告', '业绩快报')
-    and financial_index in ('zzc', 'yysr')
+    and financial_index in ('yysr', 'yycb', 'sjjfj', 'xsfy', 'glfy', 'cwfy', 'zzc')
     """.format(start_date=start_date_sql, end_date=end_date)
     df_sql = pd.read_sql(sql, engine).sort_values(['financial_index', 'end_date', 'stock_code', 'ann_date'])
 
@@ -51,16 +51,52 @@ def generate_factor(start_date, end_date):
         yysr = yysr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
         yysr = yysr.loc[:, cols]
         
+        yycb = df_tmp.loc['yycb'].loc[:, 'financial_value'].unstack()
+        cols = yycb.columns
+        yycb['YYYY'] = [ind[:4] for ind in yycb.index]
+        yycb = yycb.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        yycb = yycb.loc[:, cols]
+        
+        sjjfj = df_tmp.loc['sjjfj'].loc[:, 'financial_value'].unstack()
+        cols = sjjfj.columns
+        sjjfj['YYYY'] = [ind[:4] for ind in sjjfj.index]
+        sjjfj = sjjfj.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        sjjfj = sjjfj.loc[:, cols]
+        
+        xsfy = df_tmp.loc['xsfy'].loc[:, 'financial_value'].unstack()
+        cols = xsfy.columns
+        xsfy['YYYY'] = [ind[:4] for ind in xsfy.index]
+        xsfy = xsfy.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        xsfy = xsfy.loc[:, cols]
+        
+        glfy = df_tmp.loc['glfy'].loc[:, 'financial_value'].unstack()
+        cols = glfy.columns
+        glfy['YYYY'] = [ind[:4] for ind in glfy.index]
+        glfy = glfy.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        glfy = glfy.loc[:, cols]
+        
+        cwfy = df_tmp.loc['cwfy'].loc[:, 'financial_value'].unstack()
+        cols = cwfy.columns
+        cwfy['YYYY'] = [ind[:4] for ind in cwfy.index]
+        cwfy = cwfy.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
+        cwfy = cwfy.loc[:, cols]
+        
         zzc = df_tmp.loc['zzc'].loc[:, 'financial_value'].unstack()
         zzc[zzc<=0] = np.nan
         zzc = zzc.rolling(2, min_periods=1).mean()
         
         yysr_ttm = yysr.rolling(4, min_periods=1).mean()
+        yycb_ttm = yycb.rolling(4, min_periods=1).mean()
+        sjjfj_ttm = sjjfj.rolling(4, min_periods=1).mean()
+        xsfy_ttm = xsfy.rolling(4, min_periods=1).mean()
+        glfy_ttm = glfy.rolling(4, min_periods=1).mean()
+        cwfy_ttm = cwfy.rolling(4, min_periods=1).mean()
         zzc_ttm = zzc.rolling(4, min_periods=1).mean()
         
-        operation = yysr_ttm / zzc_ttm
-        operation.fillna(method='ffill', limit=4, inplace=True)
-        dic[trade_date] = operation.iloc[-1]
+        core = (yysr_ttm - yycb_ttm - sjjfj_ttm - xsfy_ttm - glfy_ttm - cwfy_ttm) / zzc_ttm
+        core = core.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+        core.fillna(method='ffill', limit=4, inplace=True)
+        dic[trade_date] = core.iloc[-1]
     factor = DataFrame(dic).T
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
@@ -71,7 +107,7 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactoroperation', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorcore', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

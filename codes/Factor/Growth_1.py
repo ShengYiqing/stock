@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 1500)
+    start_date_sql = tools.trade_date_shift(start_date, 750)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     sql = """
     select ann_date, end_date, ann_type, stock_code, financial_index, financial_value 
@@ -32,7 +32,7 @@ def generate_factor(start_date, end_date):
     and end_date <= {end_date}
     and substr(end_date, -4) in ('0331', '0630', '0930', '1231')
     and ann_type in ('定期报告', '业绩预告', '业绩快报')
-    and financial_index in ('yysr', 'gmjlr')
+    and financial_index in ('yysr')
     """.format(start_date=start_date_sql, end_date=end_date)
     df_sql = pd.read_sql(sql, engine).sort_values(['financial_index', 'end_date', 'stock_code', 'ann_date'])
 
@@ -45,24 +45,15 @@ def generate_factor(start_date, end_date):
         df_tmp = df_sql.loc[df_sql.ann_date<=trade_date]
         df_tmp = df_tmp.groupby(['financial_index', 'end_date', 'stock_code']).last()
         
-        gmjlr = df_tmp.loc['gmjlr'].loc[:, 'financial_value'].unstack()
-        cols = gmjlr.columns
-        gmjlr['YYYY'] = [ind[:4] for ind in gmjlr.index]
-        gmjlr = gmjlr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
-        gmjlr = gmjlr.loc[:, cols]
-        
         yysr = df_tmp.loc['yysr'].loc[:, 'financial_value'].unstack()
         cols = yysr.columns
         yysr['YYYY'] = [ind[:4] for ind in yysr.index]
         yysr = yysr.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
         yysr = yysr.loc[:, cols]
         
-        g_1 = np.log(yysr).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff()
-        g_2 = np.log(gmjlr).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff()
+        yysr_ttm = yysr.rolling(4, min_periods=1).mean()
         
-        g_1 = g_1.fillna(method='ffill', limit=4).iloc[-1].rank(pct=True)
-        g_2 = g_2.fillna(method='ffill', limit=4).iloc[-1].rank(pct=True)
-        g = g_1 + g_2
+        g = np.log(yysr_ttm).replace(-np.inf, np.nan).replace(np.inf, np.nan).diff().rolling(4, min_periods=1).mean().fillna(method='ffill', limit=4).iloc[-1]
         
         dic[trade_date] = g
     factor = DataFrame(dic).T

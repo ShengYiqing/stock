@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 60)
+    start_date_sql = tools.trade_date_shift(start_date, 250)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
@@ -34,11 +34,14 @@ def generate_factor(start_date, end_date):
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['TRADE_DATE', 'STOCK_CODE'])
     AMOUNT = df.loc[:, 'AMOUNT']
-    AMOUNT = AMOUNT.unstack().rolling(60, min_periods=20).mean()
+    AMOUNT = AMOUNT.unstack().ewm(halflife=60).std()
     df = AMOUNT.copy()
     df = df.loc[df.index>=start_date]
+    df.index.name = 'trade_date'
+    df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
+    df_n = tools.neutralize(df)
+    df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

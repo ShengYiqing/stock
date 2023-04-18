@@ -14,11 +14,11 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-def single_factor_analysis(factor_name, start_date, end_date, white_threshold=0.618, value_type='factor_value'):
+def single_factor_analysis(factor_name, start_date, end_date, value_type='factor_value'):
     factor_table_name = 'tfactor' + factor_name
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     
-    sql = tools.generate_sql_y_x([factor_name], start_date, end_date, white_threshold, factor_value_type_dic={factor_name:value_type})
+    sql = tools.generate_sql_y_x([factor_name], start_date, end_date, factor_value_type_dic={factor_name:value_type})
     df = pd.read_sql(sql, engine)
     
     x = df.set_index(['trade_date', 'stock_code']).loc[:, factor_name].unstack()
@@ -47,24 +47,28 @@ def single_factor_analysis(factor_name, start_date, end_date, white_threshold=0.
     #         tools.factor_analyse(x_tmp, y_tmp, 10, factor_name + '-context ' + context + ' ' + str(i))
 
 if __name__ == '__main__':
-    factor_name = 'hftech'
+    factor_name = 'quality'
+
     factors = [
-        # 'mc', 'bp',
-        'profitability', 'growth', 
-        'momentum', 'volatility', 'liquidity',
+        'operation', 'profitability', 'growth', 
+        'momentum', 'volatility', 'speculation', 
         'dailytech', 'hftech', 
         ]
     start_date = '20120101'
     end_date = '20230301'
-    white_threshold = 0
     value_type = 'preprocessed_factor_value'
-    print(factor_name, start_date, end_date, white_threshold, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
-    white_threshold = 0
+    print(factor_name, start_date, end_date, value_type)
+    single_factor_analysis(factor_name, start_date, end_date, value_type)
     value_type = 'neutral_factor_value'
-    print(factor_name, start_date, end_date, white_threshold, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
-    # white_threshold = 0
+    print(factor_name, start_date, end_date, value_type)
+    single_factor_analysis(factor_name, start_date, end_date, value_type)
+    
+    # white_threshold = 0.618
     # value_type = 'preprocessed_factor_value'
     # print(factor_name, start_date, end_date, white_threshold, value_type)
     # single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
+    # white_threshold = 0.618
+    # value_type = 'neutral_factor_value'
+    # print(factor_name, start_date, end_date, white_threshold, value_type)
+    # single_factor_analysis(factor_name, start_date, end_date, white_threshold, value_type)
+    

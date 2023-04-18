@@ -20,12 +20,10 @@ halflife_cov = 750
 lambda_i = 0.01
 
 factors = [
-    'profitability', 'growth', 
-    'momentum', 'volatility', 'liquidity', 'corrmarket',
+    'quality', 
+    'momentum', 'volatility', 'speculation', 
     'dailytech', 'hftech', 
     ]
-neutral_list = ['operation', 'profitability', 'growth', ]
-
 factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
 
 ic_sub = {'mc':0.01, 'bp':0.01}
@@ -147,7 +145,7 @@ weight_dic['w'] = 2 * weight_dic['w']
 weight_dic['m'] = 1 * weight_dic['m']
 weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
 
-sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic)
+sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic, y_neutral=False)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])

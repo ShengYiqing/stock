@@ -40,16 +40,18 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230412'
+trade_date = '20230418'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['300299', '002183', '600298', '002880', 
+buy_list = ['002714', '603605', '600150', '603712', '300518', 
+            '601985', '002010', '002492'
             
             ]
 
-sell_list= ['300294', '603258',
+sell_list= ['300873', '000651', '603529', '600332', '600499', 
+            '002119', '600380', '300378'
             ]
 
 position.extend(buy_list)
@@ -67,9 +69,10 @@ halflife_mean = 250
 halflife_cov = 750
 lambda_i = 0.01
 
+
 factors = [
-    'profitability', 'growth', 
-    'momentum', 'volatility', 'liquidity', 'corrmarket',
+    'quality', 
+    'momentum', 'volatility', 'speculation', 
     'dailytech', 'hftech', 
     ]
 neutral_list = ['operation', 'profitability', 'growth', ]
@@ -301,7 +304,7 @@ df_hold.loc[:, '持仓'] = 1
 
 ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
 r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-n = 10
+n = 5
 
 buy_dic = {}
 # ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_3'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
