@@ -23,11 +23,9 @@ select
 ann_date, 
 end_date, 
 stock_code, 
-
 total_hldr_eqy_exc_min_int jzc,
  
 total_assets zzc, 
-
 money_cap hbzj, 
 notes_receiv yspj, 
 accounts_receiv yszk, 
@@ -39,7 +37,6 @@ fix_assets_total gdzc,
 produc_bio_assets scxswzc, 
 oil_and_gas_assets yqzc, 
 intan_assets wxzc,
-
 lt_borr cqjk, 
 st_borr dqjk, 
 trading_fl jyxjrfz, 
@@ -51,7 +48,6 @@ non_cur_liab_due_1y ynndqdfldfz,
 bond_payable yfzq, 
 deriv_liab ysjrfz, 
 st_fin_payable yfdqrzk 
-
 from ttsbalancesheet
 where ann_date >= {start_date} 
 and ann_date <= {end_date}
@@ -63,18 +59,13 @@ select
 ann_date, 
 end_date, 
 stock_code, 
-
 revenue yysr, 
-
 oper_cost yycb, 
-
 biz_tax_surchg sjjfj, 
 sell_exp xsfy, 
 admin_exp glfy, 
 fin_exp cwfy,  
-
 compr_inc_attr_p gmjlr
-
 from ttsincome 
 where ann_date >= {start_date} 
 and ann_date <= {end_date}
@@ -86,11 +77,9 @@ select
 ann_date, 
 end_date, 
 stock_code, 
-
 n_cashflow_act jyxjll, 
 stot_out_inv_act tzxjlc, 
 stot_cash_in_fnc_act czxjlr
-
 from ttscashflow
 where ann_date >= {start_date} 
 and ann_date <= {end_date}
@@ -106,7 +95,6 @@ ann_date,
 end_date, 
 stock_code, 
 (net_profit_min+net_profit_max)/2 * 10000 gmjlr
-
 from ttsforecast
 where ann_date >= {start_date} 
 and ann_date <= {end_date}
@@ -123,7 +111,6 @@ revenue yysr,
 n_income gmjlr, 
 total_assets zzc, 
 total_hldr_eqy_exc_min_int jzc
-
 from ttsexpress
 where ann_date >= {start_date} 
 and ann_date <= {end_date}
@@ -155,4 +142,3 @@ df = DataFrame(df.set_index(['ann_date', 'end_date', 'stock_code','ann_type', 'R
 df.index.names = ['ann_date', 'end_date', 'stock_code', 'ann_type', 'REC_CREATE_TIME', 'financial_index']
 df.columns = ['financial_value']
 df.to_sql('tfindata', engine, schema='findata', chunksize=10000, index=True, if_exists='append', method=tools.mysql_replace_into)
-        

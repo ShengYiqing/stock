@@ -9,6 +9,38 @@ import tools
 from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
 import tools
+s = Series([1*0.966**i for i in range(750)])
+start_date = '20120101'
+end_date = '20230101'
+sql = """
+select trade_date, factor_name, ic_d
+from factorevaluation.tdailyic
+where trade_date >= {start_date}
+and trade_date <= {end_date}
+""".format(start_date=start_date, end_date=end_date)
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+df = pd.read_sql(sql, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack()
+df.index = pd.to_datetime(df.index)
+df = df.resample('M').mean()
+df.index = [i.strftime('%Y%m%d') for i in df.index]
+factor_names = df.columns
+df.loc[:, 'year'] = [i[:4] for i in df.index]
+df_tmp_dic = {factor_name:DataFrame(index=range(1, 13), columns=range(2012, 2023)) for factor_name in factor_names}
+
+for factor_name in factor_names:
+    plt.figure(figsize=(16, 9))
+    for i in range(2012, 2023):
+        year = str(i)
+        s = df.loc[df.year==year, factor_name]
+        s.index = range(1, 13)
+        df_tmp_dic[factor_name].loc[:, i] = s
+        s.plot()
+    plt.legend(range(2012, 2023))
+    plt.title(factor_name)
+    
+    plt.figure(figsize=(16, 9))
+    df_tmp_dic[factor_name].T.boxplot()
+    plt.title(factor_name)
 sql = """
 select trade_date, stock_code, r_daily
 from label.tdailylabel

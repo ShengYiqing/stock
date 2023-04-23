@@ -40,18 +40,18 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230418'
+trade_date = '20230421'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['002714', '603605', '600150', '603712', '300518', 
-            '601985', '002010', '002492'
+buy_list = ['002960', '300382', '603806', '300693', '603989', 
+            '688135', '300604', '605499', '300015'
             
             ]
 
-sell_list= ['300873', '000651', '603529', '600332', '600499', 
-            '002119', '600380', '300378'
+sell_list= ['603011', '002801', '300957', '002322', '000848', 
+            '002353', 
             ]
 
 position.extend(buy_list)
@@ -65,16 +65,20 @@ print(position)
 print('----持股数量----')
 print('持股数量: ', len(position))
 
-halflife_mean = 250
-halflife_cov = 750
-lambda_i = 0.01
+halflife_mean = 20
+halflife_cov = 60
 
+seasonal_n_mean = 20
+seasonal_n_cov = 20
+s = 10
+lambda_i = 0.01
 
 factors = [
     'quality', 
     'momentum', 'volatility', 'speculation', 
     'dailytech', 'hftech', 
     ]
+
 neutral_list = ['operation', 'profitability', 'growth', ]
 
 factor_value_type_dic = {factor: 'neutral_factor_value' if factor in neutral_list else 'preprocessed_factor_value' for factor in factors}
@@ -90,7 +94,7 @@ ic_sub = Series(ic_sub)
 end_date = trade_date
 start_date = trade_date
 trade_dates = tools.get_trade_cal(start_date, end_date)
-start_date_ic = tools.trade_date_shift(start_date, 1250)
+start_date_ic = tools.trade_date_shift(start_date, 2500)
 
 print('----参数----')
 print('halflife_mean: ', halflife_mean)
@@ -156,20 +160,56 @@ df_tr_d = df_tr.loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
 
 tr_dic = {'d':df_tr_d, 'w':df_tr_w, 'm':df_tr_m}
 
+n_1 = 250 - seasonal_n_mean
+n_2 = n_1 + 250
+n_3 = n_2 + 250
+n_4 = n_3 + 250
+
 weight_dic = {}
 for t in ic_dic.keys():
     df_ic = ic_dic[t]
     df_h = h_dic[t]
     df_tr = tr_dic[t]
     
-    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    ic_mean_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    ic_mean_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    ic_mean_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    ic_mean_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    ic_mean = 10*ic_mean + 4*ic_mean_s_1 + 3*ic_mean_s_2 + 2*ic_mean_s_3 + ic_mean_s_4
+    ic_mean = ic_mean / 20
     
-    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
-    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
+    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=5).std().fillna(0)
+    ic_std_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_1)
+    ic_std_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_2)
+    ic_std_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_3)
+    ic_std_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_4)
+    ic_std = 10*ic_std + 4*ic_std_s_1 + 3*ic_std_s_2 + 2*ic_std_s_3 + ic_std_s_4
+    ic_std = ic_std / 20
     
-    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=5).corr().fillna(0)
+    ic_corr_s_1 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_1*len(factors))
+    ic_corr_s_2 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_2*len(factors))
+    ic_corr_s_3 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_3*len(factors))
+    ic_corr_s_4 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_4*len(factors))
+    ic_corr = 10*ic_corr + 4*ic_corr_s_1 + 3*ic_corr_s_2 + 2*ic_corr_s_3 + ic_corr_s_4
+    ic_corr = ic_corr / 20
     
-    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    h_mean_s_1 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    h_mean_s_2 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    h_mean_s_3 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    h_mean_s_4 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    h_mean = 10*h_mean + 4*h_mean_s_1 + 3*h_mean_s_2 + 2*h_mean_s_3 + h_mean_s_4
+    h_mean = h_mean / 20
+    
+    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    tr_mean_s_1 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    tr_mean_s_2 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    tr_mean_s_3 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    tr_mean_s_4 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    tr_mean = 10*tr_mean + 4*tr_mean_s_1 + 3*tr_mean_s_2 + 2*tr_mean_s_3 + tr_mean_s_4
+    tr_mean = tr_mean / 20
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     weight.index.name = 'trade_date'
@@ -259,9 +299,6 @@ print('00', len(list(filter(lambda x:x[0] == '0', position))))
 print('30', len(list(filter(lambda x:x[0] == '3', position))))
 print('60', len(list(filter(lambda x:x[0:2] == '60', position))))
 print('68', len(list(filter(lambda x:x[0:3] == '688', position))))
-print('----行业数量----')
-print(ind_num_dic)
-print('---%s---'%trade_date)
 
 df.loc[:, ['mc', 'bp']] = df.loc[:, ['mc', 'bp']].rank(pct=True)
 dp_mask = (2/3<=df.mc)
@@ -302,9 +339,13 @@ df_hold.index = range(len(df_hold))
 df_hold.loc[:, '持仓'] = 1
 # print(df_hold)
 
+print('----行业数量----')
+print(ind_num_dic)
+print('---%s---'%trade_date)
+
 ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
 r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-n = 5
+n = 3
 
 buy_dic = {}
 # ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_3'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
@@ -337,4 +378,5 @@ df_print = pd.concat([df_hold, df_buy])
 df_print = df_print.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_print.index = range(len(df_print))
 df_print = df_print.loc[:, ['股票代码', '股票名称', '一级行业', '二级行业', '三级行业', 'mc', 'bp', '持仓', '排名', '预期收益']+factors]
+df_print.rename({factor:factor + '(%.2f)'%weight.loc[trade_date, factor] for factor in factors}, axis=1, inplace=True)
 df_print.to_excel('D:/stock/信号/%s.xlsx'%trade_date)

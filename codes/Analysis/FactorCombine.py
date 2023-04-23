@@ -15,9 +15,18 @@ import tools
 from sqlalchemy import create_engine
 from sklearn.linear_model import LinearRegression
 
-halflife_mean = 250
-halflife_cov = 750
+halflife_mean = 20
+halflife_cov = 60
+
+seasonal_n_mean = 20
+seasonal_n_cov = 20
+s = 10
 lambda_i = 0.01
+print('halflife_mean', halflife_mean)
+print('halflife_cov', halflife_cov)
+print('seasonal_n_mean', seasonal_n_mean)
+print('seasonal_n_cov', seasonal_n_cov)
+print('s', s)
 
 factors = [
     'quality', 
@@ -107,20 +116,55 @@ df_tr_d = df_tr.loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
 
 tr_dic = {'d':df_tr_d, 'w':df_tr_w, 'm':df_tr_m}
 
+n_1 = 250 - seasonal_n_mean
+n_2 = n_1 + 250
+n_3 = n_2 + 250
+n_4 = n_3 + 250
 weight_dic = {}
 for t in ic_dic.keys():
     df_ic = ic_dic[t]
     df_h = h_dic[t]
     df_tr = tr_dic[t]
     
-    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    ic_mean_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    ic_mean_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    ic_mean_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    ic_mean_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    ic_mean = 10*ic_mean + 4*ic_mean_s_1 + 3*ic_mean_s_2 + 2*ic_mean_s_3 + ic_mean_s_4
+    ic_mean = ic_mean / 20
     
-    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
-    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
+    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=5).std().fillna(0)
+    ic_std_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_1)
+    ic_std_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_2)
+    ic_std_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_3)
+    ic_std_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_4)
+    ic_std = 10*ic_std + 4*ic_std_s_1 + 3*ic_std_s_2 + 2*ic_std_s_3 + ic_std_s_4
+    ic_std = ic_std / 20
     
-    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=5).corr().fillna(0)
+    ic_corr_s_1 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_1*len(factors))
+    ic_corr_s_2 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_2*len(factors))
+    ic_corr_s_3 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_3*len(factors))
+    ic_corr_s_4 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_4*len(factors))
+    ic_corr = 10*ic_corr + 4*ic_corr_s_1 + 3*ic_corr_s_2 + 2*ic_corr_s_3 + ic_corr_s_4
+    ic_corr = ic_corr / 20
     
-    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    h_mean_s_1 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    h_mean_s_2 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    h_mean_s_3 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    h_mean_s_4 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    h_mean = 10*h_mean + 4*h_mean_s_1 + 3*h_mean_s_2 + 2*h_mean_s_3 + h_mean_s_4
+    h_mean = h_mean / 20
+    
+    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
+    tr_mean_s_1 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    tr_mean_s_2 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    tr_mean_s_3 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    tr_mean_s_4 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    tr_mean = 10*tr_mean + 4*tr_mean_s_1 + 3*tr_mean_s_2 + 2*tr_mean_s_3 + tr_mean_s_4
+    tr_mean = tr_mean / 20
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     weight.index.name = 'trade_date'
@@ -132,12 +176,12 @@ for t in ic_dic.keys():
         
         h = h_mean.loc[trade_date, :] ** 0.25
         tr = tr_mean.loc[trade_date, :] ** 0.25
-        mat_ic_s_tune = np.diag(ic_s)
+        mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
         mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
         mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :]).values)
+        weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
     
     weight_dic[t] = weight.div(weight.std(1), axis=0)
 weight_dic['d'] = 3 * weight_dic['d']

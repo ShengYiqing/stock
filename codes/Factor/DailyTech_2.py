@@ -41,7 +41,8 @@ def generate_factor(start_date, end_date):
         pass
     factor_dic = {'skew':-1,
                   'pvcorr':-1,
-                  'corrmarket':1,}
+                  'corrmarket':1, 
+                  'seasonal':1,}
     factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
