@@ -9,11 +9,15 @@ import tools
 from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
 import tools
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.tsaplots import plot_pacf
+
 s = Series([1*0.966**i for i in range(750)])
+
 start_date = '20120101'
 end_date = '20230101'
 sql = """
-select trade_date, factor_name, ic_d
+select trade_date, factor_name, (ic_d + rank_ic_d)/2 ic_d
 from factorevaluation.tdailyic
 where trade_date >= {start_date}
 and trade_date <= {end_date}
@@ -22,6 +26,8 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=ut
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack()
 df.index = pd.to_datetime(df.index)
 df = df.resample('M').mean()
+plot_pacf(df.quality, lags=60)
+
 df.index = [i.strftime('%Y%m%d') for i in df.index]
 factor_names = df.columns
 df.loc[:, 'year'] = [i[:4] for i in df.index]

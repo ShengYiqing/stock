@@ -40,7 +40,7 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230421'
+trade_date = '20230425'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -65,16 +65,15 @@ print(position)
 print('----持股数量----')
 print('持股数量: ', len(position))
 
-halflife_mean = 20
-halflife_cov = 60
+halflife_mean = 250
+halflife_cov = 750
 
 seasonal_n_mean = 20
-seasonal_n_cov = 20
 s = 10
 lambda_i = 0.01
 
 factors = [
-    'quality', 
+    'quality', 'value', 
     'momentum', 'volatility', 'speculation', 
     'dailytech', 'hftech', 
     ]
@@ -94,7 +93,7 @@ ic_sub = Series(ic_sub)
 end_date = trade_date
 start_date = trade_date
 trade_dates = tools.get_trade_cal(start_date, end_date)
-start_date_ic = tools.trade_date_shift(start_date, 2500)
+start_date_ic = tools.trade_date_shift(start_date, 1250)
 
 print('----参数----')
 print('halflife_mean: ', halflife_mean)
@@ -171,45 +170,21 @@ for t in ic_dic.keys():
     df_h = h_dic[t]
     df_tr = tr_dic[t]
     
-    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
-    ic_mean_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
-    ic_mean_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
-    ic_mean_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
-    ic_mean_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
-    ic_mean = 10*ic_mean + 4*ic_mean_s_1 + 3*ic_mean_s_2 + 2*ic_mean_s_3 + ic_mean_s_4
-    ic_mean = ic_mean / 20
+    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_mean_s_1 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
+    ic_mean_s_2 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
+    ic_mean_s_3 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
+    ic_mean_s_4 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
+    ic_mean.loc[:, 'quality'] = 60*ic_mean.loc[:, 'quality'] + 16*ic_mean_s_1 + 12*ic_mean_s_2 + 8*ic_mean_s_3 + 4*ic_mean_s_4
+    ic_mean.loc[:, 'quality'] = ic_mean.loc[:, 'quality'] / 100
     
-    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=5).std().fillna(0)
-    ic_std_s_1 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_1)
-    ic_std_s_2 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_2)
-    ic_std_s_3 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_3)
-    ic_std_s_4 = df_ic.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').std(std=s).fillna(0).shift(n_4)
-    ic_std = 10*ic_std + 4*ic_std_s_1 + 3*ic_std_s_2 + 2*ic_std_s_3 + ic_std_s_4
-    ic_std = ic_std / 20
+    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
     
-    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=5).corr().fillna(0)
-    ic_corr_s_1 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_1*len(factors))
-    ic_corr_s_2 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_2*len(factors))
-    ic_corr_s_3 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_3*len(factors))
-    ic_corr_s_4 = df_ic.rolling(seasonal_n_cov, min_periods=5).corr().fillna(0).shift(n_4*len(factors))
-    ic_corr = 10*ic_corr + 4*ic_corr_s_1 + 3*ic_corr_s_2 + 2*ic_corr_s_3 + ic_corr_s_4
-    ic_corr = ic_corr / 20
+    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
     
-    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
-    h_mean_s_1 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
-    h_mean_s_2 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
-    h_mean_s_3 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
-    h_mean_s_4 = df_h.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
-    h_mean = 10*h_mean + 4*h_mean_s_1 + 3*h_mean_s_2 + 2*h_mean_s_3 + h_mean_s_4
-    h_mean = h_mean / 20
+    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
     
-    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=5).mean().fillna(0)
-    tr_mean_s_1 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
-    tr_mean_s_2 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
-    tr_mean_s_3 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
-    tr_mean_s_4 = df_tr.rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
-    tr_mean = 10*tr_mean + 4*tr_mean_s_1 + 3*tr_mean_s_2 + 2*tr_mean_s_3 + tr_mean_s_4
-    tr_mean = tr_mean / 20
+    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     weight.index.name = 'trade_date'
@@ -219,8 +194,8 @@ for t in ic_dic.keys():
         
         ic_s = ic_std.loc[trade_date, :]
         
-        h = h_mean.loc[trade_date, :] ** 0.25
-        tr = tr_mean.loc[trade_date, :] ** 0.25
+        h = h_mean.loc[trade_date, :] ** (1/16)
+        tr = tr_mean.loc[trade_date, :] ** (1/16)
         mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
@@ -249,16 +224,13 @@ for factor in factors:
 x = r_hat
 
 sql = """
-select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc 
 from label.tdailylabel tlabel
 left join indsw.tindsw tind
 on tlabel.stock_code = tind.stock_code
 left join factor.tfactormc tmc
 on tlabel.stock_code = tmc.stock_code
 and tlabel.trade_date = tmc.trade_date
-left join factor.tfactorbp tbp
-on tlabel.stock_code = tbp.stock_code
-and tlabel.trade_date = tbp.trade_date
 where tlabel.trade_date = {trade_date}
 and tlabel.stock_code in {stock_codes}""".format(trade_date=trade_date, stock_codes=tuple(x.columns))
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -270,7 +242,7 @@ data = pd.concat([x, df_n], axis=1).dropna()
 
 def f(data):
     # pdb.set_trace()
-    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
+    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc']]], axis=1).fillna(0)
     # X = data.loc[:, ['mc', 'bp']]
     # print(X)
     y = data.loc[:, 'x']
@@ -345,7 +317,7 @@ print('---%s---'%trade_date)
 
 ret = r_hat.loc[trade_date, :].sort_values(ascending=False)
 r_hat_rank = r_hat.loc[trade_date, :].rank().sort_values(ascending=False)
-n = 3
+n = 1000
 
 buy_dic = {}
 # ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_3'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}

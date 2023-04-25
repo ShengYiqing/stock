@@ -42,7 +42,8 @@ def generate_factor(start_date, end_date):
     dic = {}
     for trade_date in trade_dates:
         print(trade_date)
-        df_tmp = df_sql.loc[df_sql.ann_date<=trade_date]
+        start_date_tmp = tools.trade_date_shift(trade_date, 750)
+        df_tmp = df_sql.loc[(df_sql.ann_date>=start_date_tmp)&(df_sql.ann_date<=trade_date)]
         df_tmp = df_tmp.groupby(['financial_index', 'end_date', 'stock_code']).last()
         
         yysr = df_tmp.loc['yysr'].loc[:, 'financial_value'].unstack()

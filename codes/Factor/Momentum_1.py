@@ -61,5 +61,5 @@ def generate_factor(start_date, end_date):
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-    # start_date = '20100101'
+    start_date = '20100101'
     generate_factor(start_date, end_date)

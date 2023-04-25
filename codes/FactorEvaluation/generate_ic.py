@@ -52,11 +52,11 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'quality', 
+        'quality', 'value', 
         'momentum', 'volatility', 'speculation', 
         'dailytech', 'hftech', 
         ]
-    # factors = ['quality']
+    # factors = ['value']
     neutral_list = ['operation', 'profitability', 'growth', ]
     
     factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}

@@ -31,7 +31,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 df = pd.read_sql(sql, engine)
 df = df.set_index(['trade_date', 'stock_code']).loc[:, factors].groupby(['trade_date']).rank(pct=True)
 
-df.loc[:, 'white'] = ((df.mc>0.05) & (df.liquidity>0.05)).astype(int)
+df.loc[:, 'white'] = ((df.mc>0.2) & (df.liquidity>0.2)).astype(int)
 df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
 df.to_sql('tdailywhitelist', engine, schema='whitelist', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 if __name__ == '__main__':

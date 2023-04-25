@@ -397,13 +397,10 @@ def neutralize(data):
         data.columns.name = 'stock_code'
         engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
         sql = """
-        select tmc.trade_date trade_date, tmc.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc, tbp.preprocessed_factor_value bp 
+        select tmc.trade_date trade_date, tmc.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc
         from factor.tfactormc tmc
         left join indsw.tindsw tind
         on tmc.stock_code = tind.stock_code
-        left join factor.tfactorbp tbp
-        on tmc.stock_code = tbp.stock_code
-        and tmc.trade_date = tbp.trade_date
         where tmc.trade_date in {trade_dates}
         and tmc.stock_code in {stock_codes}
         """.format(trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
@@ -416,7 +413,7 @@ def neutralize(data):
 
         def g(data):
             # pdb.set_trace()
-            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'bp']]], axis=1).fillna(0)
+            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc']]], axis=1).fillna(0)
             # X = data.loc[:, ['mc', 'bp']]
             # print(X)
             y = data.loc[:, 'x']
