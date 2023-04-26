@@ -54,8 +54,9 @@ def generate_factor(start_date, end_date):
         df = df.ewm(halflife=5).mean()
         df = df.loc[df.index>=start_date]
         df_p = tools.standardize(tools.winsorize(df))
-        df_n = tools.neutralize(df)
-        df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+        # df_n = tools.neutralize(df)
+        # df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+        df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
         df_new = df_new.stack()
         df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
         df_new.to_sql('tfactorhf%s'%factor_name, engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)

@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorliquidity` (
+        CREATE TABLE `factor`.`tfactorspeculation` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(20) NOT NULL,
@@ -42,7 +42,7 @@ def generate_factor(start_date, end_date):
     factor_dic = {'tr':-1, 'str':-1, 
                   }
     factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, factor_value_type_dic=factor_value_type_dic)
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
@@ -60,7 +60,7 @@ def generate_factor(start_date, end_date):
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorliquidity', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_new.to_sql('tfactorspeculation', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

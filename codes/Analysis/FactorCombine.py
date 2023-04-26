@@ -31,7 +31,7 @@ print('s', s)
 
 factors = [
     'quality', 'value', 
-    'momentum', 'volatility', 'speculation', 
+    # 'momentum', 'volatility', 'speculation', 
     'dailytech', 'hftech', 
     ]
 factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
@@ -44,7 +44,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20230101'
+start_date = '20200101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -176,39 +176,7 @@ for factor in factors:
     x = x.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
 
 
-sql = """
-select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc 
-from label.tdailylabel tlabel
-left join indsw.tindsw tind
-on tlabel.stock_code = tind.stock_code
-left join factor.tfactormc tmc
-on tlabel.stock_code = tmc.stock_code
-and tlabel.trade_date = tmc.trade_date
-where tlabel.trade_date in {trade_dates}
-and tlabel.stock_code in {stock_codes}""".format(trade_dates=tuple(x.index), stock_codes=tuple(x.columns))
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-df_n = pd.read_sql(sql, engine)
-df_n = df_n.set_index(['trade_date', 'stock_code'])
-x = x.stack()
-x.name = 'x'
-data = pd.concat([x, df_n], axis=1).dropna()
-
-def f(data):
-    # pdb.set_trace()
-    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc']]], axis=1).fillna(0)
-    # X = data.loc[:, ['mc', 'bp']]
-    # print(X)
-    y = data.loc[:, 'x']
-    # model = LinearRegression(n_jobs=-1)
-    # model.fit(X, y)
-    # y_predict = Series(model.predict(X), index=y.index)
-    y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.01*np.identity(len(X.T))).dot(X.T).dot(y))
-    
-    res = y - y_predict
-    return res
-x_n = data.groupby('trade_date').apply(f).unstack()
-x_n.reset_index(0, drop=True, inplace=True)
-x = x_n
+x = tools.neutralize(x, factors=['mc', 'bp', 'momentum', 'sigma', 'tr'])
 
 #因子分布
 plt.figure(figsize=(16,12))
@@ -237,7 +205,7 @@ plt.figure(figsize=(16,12))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 50
+num_group = 10
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))

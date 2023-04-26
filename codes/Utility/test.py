@@ -94,8 +94,8 @@ df = DataFrame(np.arange(80).reshape(20, 4))
 df.rolling(10, win_type='exponential').mean()
 
 trade_date = '20220104'
-x1 = 'corrmarket'
-x2 = 'hfcorrmarket'
+x1 = 'sigma'
+x2 = 'volatility'
 def dailyhffactor_analysis(x1, x2, trade_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     
@@ -150,6 +150,6 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'profitability'
-x2 = 'growth'
+x1 = 'tr'
+x2 = 'str'
 tools.colinearity_analysis(x1, x2, trade_date)

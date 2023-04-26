@@ -52,8 +52,8 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'quality', 'value', 
-        'momentum', 'volatility', 'speculation', 
+        'quality', #'value', 
+        #'momentum', 'volatility', 'speculation', 
         'dailytech', 'hftech', 
         ]
     # factors = ['value']
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     
     factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
     
-    sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic, y_neutral=True)
+    sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     pool = mp.Pool(4)

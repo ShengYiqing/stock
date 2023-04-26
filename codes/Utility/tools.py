@@ -28,6 +28,7 @@ def colinearity_analysis(x1, x2, trade_date):
     where t1.trade_date = {trade_date}""".format(x1=x1, x2=x2, trade_date=trade_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     df.dropna(inplace=True)
+    plt.figure(figsize=(16, 9))
     plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
     print(df.corr())
 
@@ -391,19 +392,41 @@ def reg_ts(df, n):
     
     return b, e
 
-def neutralize(data):
+def neutralize(data, factors=['mc']):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
         engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+        f0 = factors[0]
         sql = """
-        select tmc.trade_date trade_date, tmc.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc
-        from factor.tfactormc tmc
+        select t{f0}.trade_date trade_date, t{f0}.stock_code stock_code, t{f0}.preprocessed_factor_value {f0}
+        """.format(f0=f0)
+        if len(factors) > 1:
+            for f in factors[1:]:
+                sql += """
+                , t{f}.preprocessed_factor_value {f}
+                """.format(f=f)
+        sql += """
+        , tind.ind_code ind 
+        """
+        
+        sql += """
+        from factor.tfactor{f0} t{f0}
+        """.format(f0=f0)
+        if len(factors) > 1:
+            for f in factors[1:]:
+                sql += """
+                left join factor.tfactor{f} t{f}
+                on t{f0}.stock_code = t{f}.stock_code
+                and t{f0}.trade_date = t{f}.trade_date
+                """.format(f0=f0, f=f)
+        
+        sql += """
         left join indsw.tindsw tind
-        on tmc.stock_code = tind.stock_code
-        where tmc.trade_date in {trade_dates}
-        and tmc.stock_code in {stock_codes}
-        """.format(trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
+        on t{f0}.stock_code = tind.stock_code
+        where t{f0}.trade_date in {trade_dates}
+        and t{f0}.stock_code in {stock_codes}
+        """.format(f0=f0, trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
         
         df_n = pd.read_sql(sql, engine)
         df_n = df_n.set_index(['trade_date', 'stock_code'])
@@ -413,7 +436,7 @@ def neutralize(data):
 
         def g(data):
             # pdb.set_trace()
-            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc']]], axis=1).fillna(0)
+            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, factors]], axis=1).fillna(0)
             # X = data.loc[:, ['mc', 'bp']]
             # print(X)
             y = data.loc[:, 'x']

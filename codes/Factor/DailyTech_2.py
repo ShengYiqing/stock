@@ -43,7 +43,7 @@ def generate_factor(start_date, end_date):
                   'seasonal': 1,
                   'pvcorr': -2,
                   'corrmarket': 3,}
-    factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
+    factor_value_type_dic = {factor:'factor_value' for factor in factor_dic.keys()}
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -57,8 +57,9 @@ def generate_factor(start_date, end_date):
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df_n = tools.neutralize(df)
-    df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+    # df_n = tools.neutralize(df)
+    # df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
     df_new = df_new.stack()
     df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

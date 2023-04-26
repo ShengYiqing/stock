@@ -43,8 +43,9 @@ def generate_factor(start_date, end_date):
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
     df_p = tools.standardize(tools.winsorize(df))
-    df_n = tools.neutralize(df)
-    df = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+    # df_n = tools.neutralize(df)
+    # df = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
+    df = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
     df = df.stack()
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

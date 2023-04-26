@@ -224,13 +224,19 @@ for factor in factors:
 x = r_hat
 
 sql = """
-select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc 
+select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc , tm.preprocessed_factor_value m , tv.preprocessed_factor_value v 
 from label.tdailylabel tlabel
 left join indsw.tindsw tind
 on tlabel.stock_code = tind.stock_code
 left join factor.tfactormc tmc
 on tlabel.stock_code = tmc.stock_code
 and tlabel.trade_date = tmc.trade_date
+left join factor.tfactormomentum tm
+on tlabel.stock_code = tm.stock_code
+and tlabel.trade_date = tm.trade_date
+left join factor.tfactorvolatility tv
+on tlabel.stock_code = tv.stock_code
+and tlabel.trade_date = tv.trade_date
 where tlabel.trade_date = {trade_date}
 and tlabel.stock_code in {stock_codes}""".format(trade_date=trade_date, stock_codes=tuple(x.columns))
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -242,7 +248,7 @@ data = pd.concat([x, df_n], axis=1).dropna()
 
 def f(data):
     # pdb.set_trace()
-    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc']]], axis=1).fillna(0)
+    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'm', 'v']]], axis=1).fillna(0)
     # X = data.loc[:, ['mc', 'bp']]
     # print(X)
     y = data.loc[:, 'x']
