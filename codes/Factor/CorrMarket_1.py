@@ -42,9 +42,17 @@ def generate_factor(start_date, end_date):
     ADJ_FACTOR = ADJ_FACTOR.unstack()
     CLOSE = np.log(CLOSE * ADJ_FACTOR)
     r = CLOSE.diff()
-    r_m = r.mean(1)
-    df_copy = r.copy()
-    df = df_copy.ewm(halflife=20).corr(r_m)
+    
+    sql = """
+    select trade_date, close from ttsindexdaily
+    where trade_date >= {start_date}
+    and trade_date <= {end_date}
+    """
+    sql = sql.format(start_date=start_date_sql, end_date=end_date)
+    close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
+    r_m = np.log(close_m).diff()
+    
+    df = r.ewm(halflife=20).corr(r_m)
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)

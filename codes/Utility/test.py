@@ -150,6 +150,6 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'tr'
+x1 = 'sigma'
 x2 = 'str'
 tools.colinearity_analysis(x1, x2, trade_date)

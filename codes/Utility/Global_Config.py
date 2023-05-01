@@ -142,7 +142,20 @@ for k1 in WHITE_INDUSTRY_DIC.keys():
 
 # WHITE_INDUSTRY_LIST = sum(list(WHITE_INDUSTRY_DIC.values()), [])
 
-FACTORS = [
-    'MC', 'BP',
-    'Momentum', 'Sigma', 'CORRMarket', 'TurnRate', 'STR',
-    'FJZCSYL', 'FJZCSYLDT',]
+RISK_FACTORS = ['mc', 'bp']
+
+ALPHA_FACTORS = [
+        'quality', 'value', 
+        'reversal', 'speculation', 'beta', 'momentum', 
+        'dailytech', 'hftech', 
+        ]
+FACTOR_NEUTRAL_DIC = {
+    'quality': ['ind', 'mc'], 
+    'value': ['ind', 'mc'], 
+    'reversal': ['ind', 'mc'], 
+    'speculation': ['ind', 'mc'], 
+    'beta': ['ind', 'mc'], 
+    'momentum': ['ind', 'mc'], 
+    'dailytech': ['ind', 'mc'], 
+    'hftech': ['ind', 'mc'], 
+    }

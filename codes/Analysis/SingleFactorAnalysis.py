@@ -14,52 +14,42 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-def single_factor_analysis(factor_name, start_date, end_date, value_type='factor_value'):
-    factor_table_name = 'tfactor' + factor_name
+def single_factor_analysis(factor_name, start_date, end_date, neutral_list):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     
-    sql = tools.generate_sql_y_x([factor_name], start_date, end_date, factor_value_type_dic={factor_name:value_type})
-    df = pd.read_sql(sql, engine)
+    sql = tools.generate_sql_y_x([factor_name], start_date, end_date)
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     
-    x = df.set_index(['trade_date', 'stock_code']).loc[:, factor_name].unstack()
-    y = df.set_index(['trade_date', 'stock_code']).loc[:, 'r_daily'].unstack()
+    x = df.loc[:, factor_name].unstack()
+    y = df.loc[:, 'r_daily'].unstack()
     
     tools.factor_analyse(x, y, 10, factor_name)
+    if neutral_list == None:
+        x = df.loc[:, factor_name].unstack()
+    else:
+        if 'ind' in neutral_list:
+            ind = 'l3'
+        neutral_list = [i for i in neutral_list if i != 'ind']
+        x = tools.neutralize(df.loc[:, factor_name].unstack(), neutral_list, ind)
     
-    # context_list = ['bp', 'ep', 'mc', 'momentum', 'sigma', 'tr', 'str', 'corrmarket']
-    # context_list = ['mc']
-    # pieces = 10
-    # for context in context_list:
-    #     sql = """
-    #     select trade_date, stock_code, factor_value from factor.tfactor{context} 
-    #     where trade_date >= {start_date} 
-    #     and trade_date <= {end_date} """.format(context=context, start_date=start_date, end_date=end_date)
-    #     context_df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).loc[:, 'factor_value'].unstack()
-    #     context_df = DataFrame(context_df, index=x.index, columns=x.columns)
-        
-    #     context_quantile = context_df.rank(axis=1).div(context_df.notna().sum(1), axis=0)
-    #     for i in range(pieces):
-    #         x_tmp = x.copy()
-    #         y_tmp = y.copy()
-    #         x_tmp[~((i/pieces <= context_quantile)&(context_quantile <= (i+1)/pieces))] = np.nan
-    #         y_tmp[~((i/pieces <= context_quantile)&(context_quantile <= (i+1)/pieces))] = np.nan
-            
-    #         tools.factor_analyse(x_tmp, y_tmp, 10, factor_name + '-context ' + context + ' ' + str(i))
-
+    x_n = tools.neutralize(x, neutral_list, ind)
+    
+    tools.factor_analyse(x_n, y, 10, factor_name)
+    
+    
 if __name__ == '__main__':
-    factor_name = 'value'
-
+    factor_name = 'sigma'
+    neutral_list = ['ind', 'mc']
+    neutral_list = ['ind', 'mc', 'sigma']
+    neutral_list = None
     factors = [
         'quality', 'value', 
-        'momentum', 'volatility', 'speculation', 
+        'momentum', 'str',
         'dailytech', 'hftech', 
         ]
+    
     start_date = '20120101'
     end_date = '20230414'
-    value_type = 'preprocessed_factor_value'
-    print(factor_name, start_date, end_date, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, value_type)
-    value_type = 'neutral_factor_value'
-    print(factor_name, start_date, end_date, value_type)
-    single_factor_analysis(factor_name, start_date, end_date, value_type)
+    print(factor_name, start_date, end_date, neutral_list)
+    single_factor_analysis(factor_name, start_date, end_date, neutral_list)
     

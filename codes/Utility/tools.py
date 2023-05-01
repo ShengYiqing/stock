@@ -79,13 +79,13 @@ def factor_analyse(x, y, num_group, factor_name):
     
     
     plt.figure(figsize=(16,12))
-    IC.abs().cumsum().plot()
-    plt.title(factor_name+'-ic abs')
+    (IC**2).cumsum().plot()
+    plt.title(factor_name+'-r2')
     # plt.legend(['%s'%i for i in range(len(ys))])
     # plt.savefig('%s/Results/%s/IC_abs.png'%(gc.SINGLEFACTOR_PATH, self.factor_name))
         
         
-    x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
+    x_quantile = DataFrame(x.rank(axis=1, pct=True))
     
     group_pos = {}
     for n in range(num_group):
@@ -132,59 +132,6 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.title(factor_name+'-group return std')
     # plt.savefig('%s/Results/%s/group_std_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
     
-def generate_context_factor(factor, context, start_date, end_date, pieces=3):
-    sql = """
-    select t1.trade_date, t1.stock_code, t1.factor_value {factor}, t2.factor_value {context} from tfactor{factor} t1 
-    left join tfactor{context} t2 
-    on t1.stock_code = t2.stock_code 
-    and t1.trade_date = t2.trade_date 
-    where t1.trade_date >= {start_date} 
-    and t1.trade_date <= {end_date} """.format(factor=factor, context=context, start_date=start_date, end_date=end_date)
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    
-    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    factor = df.loc[:, factor].unstack()
-    context = df.loc[:, context].unstack()
-    
-    context_quantile = context.rank(axis=1).div(context.notna().sum(1), axis=0)
-    ret = {}
-    for i in range(pieces):
-        factor_tmp = factor.copy()
-        factor_tmp[~((i/pieces <= context_quantile)&(context_quantile <= (i+1)/pieces))] = 0
-        ret[i] = factor_tmp
-    
-    return ret
-
-
-def generate_high_order_factor(formula, start_date, end_date):
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    
-    formula = formula.replace('\n', ' ').replace(' ', '')
-    subjects = formula.replace('(', ' ').replace(')', ' ').replace('+', ' ').replace('-', ' ').replace('*', ' ').replace('/', ' ').split(' ')
-    subjects = list(filter(lambda x:x!= '', subjects))
-    subjects = list(filter(lambda x:not x.isdigit(), subjects))
-    
-    n = len(subjects)
-    tables = [subject.split('.')[0] for subject in subjects]
-    values = [subject.split('.')[1] for subject in subjects]
-    
-    stock_codes = []
-    for i in range(n):
-        sql = """
-        select trade_date, stock_code, {value} as v from {table} 
-        where trade_date >= {start_date} 
-        and trade_date <= {end_date}
-        """.format(value=values[i], table=tables[i], start_date=start_date, end_date=end_date)
-        exec("""%s = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).unstack().loc[:, 'v']"""%tables[i])
-        exec('stock_codes.extend(list(%s.columns))'%tables[i])
-        stock_codes = list(set(stock_codes))
-    stock_codes = sorted(stock_codes)
-    for i in range(n):
-        exec("""%s = DataFrame(%s, columns=stock_codes).fillna(0)"""%(tables[i], tables[i]))
-    
-    factor = eval(formula.replace('.factor_value', '').replace('.preprocessed_factor_value', ''))
-    return factor
-
 def generate_finance_formula(formula, start_date, end_date, shift=2000, method=None):
     if shift < 2000:
         shift = 2000
@@ -254,13 +201,15 @@ def generate_finance_formula(formula, start_date, end_date, shift=2000, method=N
     factor = factor.astype(float)
     return factor
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True, factor_value_type_dic=None, y_neutral=False):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True, factor_value_type_dic=None, y_value_type='original'):
     if factor_value_type_dic == None:
         factor_value_type_dic = {factor_name: 'preprocessed_factor_value' for factor_name in factor_names}
-    if y_neutral:
-        sql = ' select t1.trade_date, t1.stock_code, t1.neutral_r_daily r_daily, t1.neutral_r_weekly r_weekly, t1.neutral_r_monthly r_monthly '
-    else:
+        
+    if y_value_type == 'original':
         sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
+    else:
+        sql = ' select t1.trade_date, t1.stock_code, t1.{y_value_type}_r_daily r_daily, t1.{y_value_type}_r_weekly r_weekly, t1.{y_value_type}_r_monthly r_monthly '.format(y_value_type=y_value_type)
+    
     for factor_name in factor_names:
         sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type_dic[factor_name])
     sql += ' from label.tdailylabel t1 '
@@ -333,20 +282,6 @@ def mysql_replace_into(table, conn, keys, data_iter):
 
     conn.execute(update_stmt)
   
-def neutral_apply(y, x_list):
-    try:
-        date = y.name
-        X = DataFrame(index=y.index)
-        for x in x_list:
-            x = DataFrame(x, columns=y.index)
-            X = pd.concat([X, x.loc[date, y.index]], axis=1)
-        X.fillna(0, inplace=True)
-        X = sm.add_constant(X)
-        res = y - X.dot(np.linalg.inv(X.T.dot(X)).dot(X.T).dot(y.fillna(0)))
-    except:
-        print(date)
-    return res
-
 def get_trade_cal(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     sql_trade_cal = """
@@ -356,31 +291,6 @@ def get_trade_cal(start_date, end_date):
     trade_cal = list(pd.read_sql(sql_trade_cal, engine).loc[:, 'cal_date'])
     trade_cal = list(filter(lambda x:(x>=start_date) & (x<=end_date), trade_cal))
     return trade_cal
-
-def get_industrys(level='L1', stocks=None):
-    #获取行业分类
-    file_list = os.listdir(gc.DATABASE_PATH+'/StockIndustryData')
-    file_list.sort()
-    file = file_list[-1]
-    df = pd.read_csv(gc.DATABASE_PATH+'/StockIndustryData/%s'%file, dtype=str)
-    df.dropna(inplace=True)
-    
-    ind_name_code_dict = {k:k for k in set(df.loc[:,'行业名称'])}
-    industrys = {}
-    for ind_name in ind_name_code_dict.keys():
-        industrys[ind_name_code_dict[ind_name]] = list(df.loc[df.loc[:,'行业名称']==ind_name, '股票代码'])
-        industrys[ind_name_code_dict[ind_name]] = [stock + '.SZ' if (stock[0]=='0' or stock[0]=='3') else stock + '.SH' for stock in industrys[ind_name_code_dict[ind_name]]]
-    
-    if stocks:
-        def cond(stock):
-            return stock in stocks
-        industrys = {i:list(filter(cond, industrys[i])) for i in industrys.keys()}
-    
-        stocks.clear()
-        for v in industrys.values():
-            stocks.extend(v)
-        stocks.sort()
-    return industrys
 
 def reg_ts(df, n):
     x = np.arange(n)
@@ -392,7 +302,7 @@ def reg_ts(df, n):
     
     return b, e
 
-def neutralize(data, factors=['mc']):
+def neutralize(data, factors=['mc'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
@@ -407,7 +317,7 @@ def neutralize(data, factors=['mc']):
                 , t{f}.preprocessed_factor_value {f}
                 """.format(f=f)
         sql += """
-        , tind.ind_code ind 
+        , tind.l1_name l1, tind.l2_name l2, tind.l3_name l3
         """
         
         sql += """
@@ -421,13 +331,20 @@ def neutralize(data, factors=['mc']):
                 and t{f0}.trade_date = t{f}.trade_date
                 """.format(f0=f0, f=f)
         
-        sql += """
-        left join indsw.tindsw tind
-        on t{f0}.stock_code = tind.stock_code
-        where t{f0}.trade_date in {trade_dates}
-        and t{f0}.stock_code in {stock_codes}
-        """.format(f0=f0, trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
-        
+        if len(data.index) > 1:
+            sql += """
+            left join indsw.tindsw tind
+            on t{f0}.stock_code = tind.stock_code
+            where t{f0}.trade_date in {trade_dates}
+            and t{f0}.stock_code in {stock_codes}
+            """.format(f0=f0, trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
+        else:
+            sql += """
+            left join indsw.tindsw tind
+            on t{f0}.stock_code = tind.stock_code
+            where t{f0}.trade_date = {trade_date}
+            and t{f0}.stock_code in {stock_codes}
+            """.format(f0=f0, trade_date=data.index[0], stock_codes=tuple(data.columns))
         df_n = pd.read_sql(sql, engine)
         df_n = df_n.set_index(['trade_date', 'stock_code'])
         x = data.stack()
@@ -436,7 +353,11 @@ def neutralize(data, factors=['mc']):
 
         def g(data):
             # pdb.set_trace()
-            X = pd.concat([pd.get_dummies(data.ind), data.loc[:, factors]], axis=1).fillna(0)
+            if ind == None:
+                X = data.loc[:, factors].fillna(0)
+            else:
+                X = pd.concat([pd.get_dummies(data.loc[:, ind]), data.loc[:, factors]], axis=1).fillna(0)
+            
             # X = data.loc[:, ['mc', 'bp']]
             # print(X)
             y = data.loc[:, 'x']
@@ -469,14 +390,6 @@ def standardize(data):
     else:
         return None
     
-def standardize_industry(data, industrys=None):
-    if industrys == None:
-        industrys = get_industrys('L1', list(data.columns))
-    data_dic = {k:standardize(DataFrame(data, columns=industrys[k])) for k in industrys.keys()}
-    ret = pd.concat([df for df in data_dic.values()], axis=1)
-    
-    return ret
-
 def truncate(df, percent=0.025):
     tmp = df.copy()
     q1 = tmp.quantile(percent, 1)

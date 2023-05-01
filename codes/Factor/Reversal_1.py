@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 1250)
+    start_date_sql = tools.trade_date_shift(start_date, 250)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
@@ -42,8 +42,8 @@ def generate_factor(start_date, end_date):
     ADJ_FACTOR = ADJ_FACTOR.unstack()
     CLOSE = np.log(CLOSE * ADJ_FACTOR)
     r = CLOSE.diff()
-    df = r.rolling(20, min_periods=5, win_type='gaussian').mean(std=10)
-    df = df.shift(230) + df.shift(230+250) + df.shift(230+250+250)
+    df_copy = r.copy()
+    df = df_copy.ewm(halflife=20).mean()
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -56,7 +56,7 @@ def generate_factor(start_date, end_date):
     df = df.stack()
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorseasonal', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
+    df.to_sql('tfactorreversal', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

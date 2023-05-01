@@ -29,7 +29,7 @@ def generate_factor(start_date, end_date):
         CREATE TABLE `factor`.`tfactorspeculation` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
-          `STOCK_CODE` VARCHAR(20) NOT NULL,
+          `STOCK_CODE` VARCHAR(18) NOT NULL,
           `FACTOR_VALUE` DOUBLE NULL,
           `PREPROCESSED_FACTOR_VALUE` DOUBLE NULL,
           `NEUTRAL_FACTOR_VALUE` DOUBLE NULL,
@@ -41,7 +41,7 @@ def generate_factor(start_date, end_date):
         pass
     factor_dic = {'tr':-1, 'str':-1, 
                   }
-    factor_value_type_dic = {factor:'neutral_factor_value' for factor in factor_dic.keys()}
+    factor_value_type_dic = {factor:'factor_value' for factor in factor_dic.keys()}
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 

@@ -40,18 +40,16 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230425'
+trade_date = '20230428'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['002960', '300382', '603806', '300693', '603989', 
-            '688135', '300604', '605499', '300015'
-            
+buy_list = ['688111', '603345', '603517', '000869'
             ]
 
-sell_list= ['603011', '002801', '300957', '002322', '000848', 
-            '002353', 
+sell_list= ['603056', '600616', '002010', '600391', '002009', 
+            '000823', '300873', '600590', '603605', '688135', 
             ]
 
 position.extend(buy_list)
@@ -74,13 +72,9 @@ lambda_i = 0.01
 
 factors = [
     'quality', 'value', 
-    'momentum', 'volatility', 'speculation', 
+    'reversal', 'speculation', 'beta', 
     'dailytech', 'hftech', 
     ]
-
-neutral_list = ['operation', 'profitability', 'growth', ]
-
-factor_value_type_dic = {factor: 'neutral_factor_value' if factor in neutral_list else 'preprocessed_factor_value' for factor in factors}
 
 ic_sub = {'mc':0.01, 'bp':0.01}
 ic_sub = {}
@@ -163,6 +157,7 @@ n_1 = 250 - seasonal_n_mean
 n_2 = n_1 + 250
 n_3 = n_2 + 250
 n_4 = n_3 + 250
+n_5 = n_4 + 250
 
 weight_dic = {}
 for t in ic_dic.keys():
@@ -171,12 +166,16 @@ for t in ic_dic.keys():
     df_tr = tr_dic[t]
     
     ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
-    ic_mean_s_1 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
-    ic_mean_s_2 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
-    ic_mean_s_3 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
-    ic_mean_s_4 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
-    ic_mean.loc[:, 'quality'] = 60*ic_mean.loc[:, 'quality'] + 16*ic_mean_s_1 + 12*ic_mean_s_2 + 8*ic_mean_s_3 + 4*ic_mean_s_4
-    ic_mean.loc[:, 'quality'] = ic_mean.loc[:, 'quality'] / 100
+    ic_mean_s = df_ic.rolling(seasonal_n_mean, min_periods=5).mean().fillna(0)
+    ic_mean_s_1 = ic_mean_s.shift(n_1)
+    ic_mean_s_2 = ic_mean_s.shift(n_2)
+    ic_mean_s_3 = ic_mean_s.shift(n_3)
+    ic_mean_s_4 = ic_mean_s.shift(n_4)
+    ic_mean_s_5 = ic_mean_s.shift(n_5)
+    ic_mean_s = pd.concat([ic_mean_s_1, ic_mean_s_2, ic_mean_s_3, ic_mean_s_4, ic_mean_s_5], axis=1, keys=[1, 2, 3, 4, 5]).stack().mean(1).unstack()
+    
+    ic_mean = 70 * ic_mean + 30 * ic_mean_s
+    ic_mean = ic_mean / 100
     
     ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
     
@@ -195,7 +194,7 @@ for t in ic_dic.keys():
         ic_s = ic_std.loc[trade_date, :]
         
         h = h_mean.loc[trade_date, :] ** (1/16)
-        tr = tr_mean.loc[trade_date, :] ** (1/16)
+        tr = tr_mean.loc[trade_date, :]
         mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
@@ -210,59 +209,25 @@ weight_dic['m'] = 1 * weight_dic['m']
 weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
 
 start_date = trade_date
-factor_value_type_dic['mc'] = 'preprocessed_factor_value'
-factor_value_type_dic['bp'] = 'preprocessed_factor_value'
-sql = tools.generate_sql_y_x(factors + ['mc', 'bp'], start_date, end_date, factor_value_type_dic=factor_value_type_dic)
+sql = tools.generate_sql_y_x(factors + ['mc', 'bp'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 
-r_hat = DataFrame(dtype='float64')
+x = DataFrame(dtype='float64')
 for factor in factors:
-    r_hat = r_hat.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
+    neutral_list = gc.FACTOR_NEUTRAL_DIC[factor]
+    if neutral_list == None:
+        df_x = df.loc[:, factor].unstack()
+    else:
+        if 'ind' in neutral_list:
+            ind = 'l3'
+        neutral_list = [i for i in neutral_list if i != 'ind']
+        df_x = tools.neutralize(df.loc[:, factor].unstack(), neutral_list, ind)
+        df_x = df_x.reset_index(-1, drop=True).unstack()
+    x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 
-x = r_hat
-
-sql = """
-select tlabel.trade_date trade_date, tlabel.stock_code stock_code, tind.ind_code ind, tmc.preprocessed_factor_value mc , tm.preprocessed_factor_value m , tv.preprocessed_factor_value v 
-from label.tdailylabel tlabel
-left join indsw.tindsw tind
-on tlabel.stock_code = tind.stock_code
-left join factor.tfactormc tmc
-on tlabel.stock_code = tmc.stock_code
-and tlabel.trade_date = tmc.trade_date
-left join factor.tfactormomentum tm
-on tlabel.stock_code = tm.stock_code
-and tlabel.trade_date = tm.trade_date
-left join factor.tfactorvolatility tv
-on tlabel.stock_code = tv.stock_code
-and tlabel.trade_date = tv.trade_date
-where tlabel.trade_date = {trade_date}
-and tlabel.stock_code in {stock_codes}""".format(trade_date=trade_date, stock_codes=tuple(x.columns))
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-df_n = pd.read_sql(sql, engine)
-df_n = df_n.set_index(['trade_date', 'stock_code'])
-x = x.stack()
-x.name = 'x'
-data = pd.concat([x, df_n], axis=1).dropna()
-
-def f(data):
-    # pdb.set_trace()
-    X = pd.concat([pd.get_dummies(data.ind), data.loc[:, ['mc', 'm', 'v']]], axis=1).fillna(0)
-    # X = data.loc[:, ['mc', 'bp']]
-    # print(X)
-    y = data.loc[:, 'x']
-    # model = LinearRegression(n_jobs=-1)
-    # model.fit(X, y)
-    # y_predict = Series(model.predict(X), index=y.index)
-    y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.01*np.identity(len(X.T))).dot(X.T).dot(y))
-    
-    res = y - y_predict
-    return res
-x_n = data.groupby('trade_date').apply(f).unstack()
-x_n = x_n.reset_index(0, drop=True).unstack().T
-r_hat = x_n
-
+r_hat = x
 stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
 r_hat = DataFrame(r_hat, columns=stocks_all)
 ret = r_hat.loc[trade_date, :].loc[position].sort_values(ascending=False)

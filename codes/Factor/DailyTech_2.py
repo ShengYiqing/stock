@@ -40,9 +40,7 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {'skew': -1, 
-                  'seasonal': 1,
-                  'pvcorr': -2,
-                  'corrmarket': 3,}
+                  'pvcorr': -3,}
     factor_value_type_dic = {factor:'factor_value' for factor in factor_dic.keys()}
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False, factor_value_type_dic=factor_value_type_dic)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")

@@ -18,23 +18,22 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 
-halflife_mean_dic = {'d':250, 'w':250, 'm':250}
-halflife_cov_dic = {'d':750, 'w':750, 'm':750}
+halflife_mean = 250
+halflife_cov = 750
 
 seasonal_n_mean = 20
 s = 10
 lambda_i = 0.01
-print('halflife_mean_dic', halflife_mean_dic)
-print('halflife_cov_dic', halflife_cov_dic)
+print('halflife_mean', halflife_mean)
+print('halflife_cov', halflife_cov)
 print('seasonal_n_mean', seasonal_n_mean)
 print('s', s)
 
 factors = [
     'quality', 'value', 
-    # 'momentum', 'volatility', 'speculation', 
+    'reversal', 'speculation', 'beta', 
     'dailytech', 'hftech', 
     ]
-factor_value_type_dic = {factor: 'neutral_factor_value' for factor in factors}
 
 ic_sub = {'mc':0.01, 'bp':0.01}
 # ic_sub = {}
@@ -56,7 +55,7 @@ print('factors: ', factors)
 print('ic_sub: ', ic_sub)
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
-start_date_ic = tools.trade_date_shift(start_date, 1250)
+start_date_ic = tools.trade_date_shift(start_date, 1500)
 
 #读ic
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
@@ -119,27 +118,32 @@ n_1 = 250 - seasonal_n_mean
 n_2 = n_1 + 250
 n_3 = n_2 + 250
 n_4 = n_3 + 250
+n_5 = n_4 + 250
+weight_s = 0.5
 weight_dic = {}
 for t in ic_dic.keys():
     df_ic = ic_dic[t]
     df_h = h_dic[t]
     df_tr = tr_dic[t]
     
-    ic_mean = df_ic.ewm(halflife=halflife_mean_dic[t], min_periods=250).mean().fillna(0)
-    ic_mean_s_1 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_1)
-    ic_mean_s_2 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_2)
-    ic_mean_s_3 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_3)
-    ic_mean_s_4 = df_ic.loc[:, 'quality'].rolling(seasonal_n_mean, min_periods=5, win_type='gaussian').mean(std=s).fillna(0).shift(n_4)
-    ic_mean.loc[:, 'quality'] = 60*ic_mean.loc[:, 'quality'] + 16*ic_mean_s_1 + 12*ic_mean_s_2 + 8*ic_mean_s_3 + 4*ic_mean_s_4
-    ic_mean.loc[:, 'quality'] = ic_mean.loc[:, 'quality'] / 100
+    ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    ic_mean_s = df_ic.rolling(seasonal_n_mean, min_periods=5).mean().fillna(0)
+    ic_mean_s_1 = ic_mean_s.shift(n_1)
+    ic_mean_s_2 = ic_mean_s.shift(n_2)
+    ic_mean_s_3 = ic_mean_s.shift(n_3)
+    ic_mean_s_4 = ic_mean_s.shift(n_4)
+    ic_mean_s_5 = ic_mean_s.shift(n_5)
+    ic_mean_s = pd.concat([ic_mean_s_1, ic_mean_s_2, ic_mean_s_3, ic_mean_s_4, ic_mean_s_5], axis=1, keys=[1, 2, 3, 4, 5]).stack().mean(1).unstack()
     
-    ic_std = df_ic.ewm(halflife=halflife_cov_dic[t], min_periods=250).std().fillna(0)
+    ic_mean = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
     
-    ic_corr = df_ic.ewm(halflife=halflife_cov_dic[t], min_periods=250).corr().fillna(0)
+    ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
     
-    h_mean = df_h.ewm(halflife=halflife_mean_dic[t], min_periods=250).mean().fillna(0)
+    ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
     
-    tr_mean = df_tr.ewm(halflife=halflife_mean_dic[t], min_periods=250).mean().fillna(0)
+    h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+    
+    tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
     
     weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
     weight.index.name = 'trade_date'
@@ -150,7 +154,7 @@ for t in ic_dic.keys():
         ic_s = ic_std.loc[trade_date, :]
         
         h = h_mean.loc[trade_date, :] ** (1/16)
-        tr = tr_mean.loc[trade_date, :] ** (1/16)
+        tr = tr_mean.loc[trade_date, :]
         mat_ic_s_tune = np.diag(ic_s * h)
         
         mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
@@ -164,7 +168,7 @@ weight_dic['w'] = 1 * weight_dic['w']
 weight_dic['m'] = 1 * weight_dic['m']
 weight = pd.concat([weight.stack() for weight in weight_dic.values()], axis=1).mean(1).unstack()
 
-sql = tools.generate_sql_y_x(factors, start_date, end_date, factor_value_type_dic=factor_value_type_dic, y_neutral=False)
+sql = tools.generate_sql_y_x(factors, start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
@@ -173,10 +177,16 @@ y = df.loc[:, 'r_daily'].unstack()
 
 x = DataFrame(dtype='float64')
 for factor in factors:
-    x = x.add((df.loc[:, factor].unstack().mul(weight.loc[:, factor], axis=0)), fill_value=0)
-
-
-x = tools.neutralize(x, factors=['mc', 'bp', 'momentum', 'sigma', 'tr'])
+    neutral_list = gc.FACTOR_NEUTRAL_DIC[factor]
+    if neutral_list == None:
+        df_x = df.loc[:, factor].unstack()
+    else:
+        if 'ind' in neutral_list:
+            ind = 'l3'
+        neutral_list = [i for i in neutral_list if i != 'ind']
+        df_x = tools.neutralize(df.loc[:, factor].unstack(), neutral_list, ind)
+    
+    x = x.add((df_x.mul(weight.loc[:, factor], axis=0)), fill_value=0)
 
 #因子分布
 plt.figure(figsize=(16,12))
