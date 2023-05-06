@@ -26,7 +26,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=ut
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack()
 df.index = pd.to_datetime(df.index)
 df = df.resample('M').mean()
-plot_pacf(df.quality, lags=60)
+plot_acf(df.bp, lags=60)
 
 df.index = [i.strftime('%Y%m%d') for i in df.index]
 factor_names = df.columns
@@ -150,6 +150,6 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'sigma'
-x2 = 'str'
+x1 = 'dailytech'
+x2 = 'pvcorr'
 tools.colinearity_analysis(x1, x2, trade_date)

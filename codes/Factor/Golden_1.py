@@ -31,8 +31,6 @@ def generate_factor(start_date, end_date):
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(18) NOT NULL,
           `FACTOR_VALUE` DOUBLE NULL,
-          `PREPROCESSED_FACTOR_VALUE` DOUBLE NULL,
-          `NEUTRAL_FACTOR_VALUE` DOUBLE NULL,
           PRIMARY KEY (`TRADE_DATE`, `STOCK_CODE`))
         """
         with engine.connect() as con:
@@ -75,14 +73,10 @@ def generate_factor(start_date, end_date):
     df = f.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df_p = tools.standardize(tools.winsorize(df))
-    # df_n = tools.neutralize(df)
-    # df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df_new = df_new.stack()
-    df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df = DataFrame({'factor_value':df.stack()})
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorgolden', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorgolden', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

@@ -19,10 +19,17 @@ from sqlalchemy import create_engine
 if __name__ == '__main__':
     
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
-    
-    sql = """
-    delete FROM intermediate.tdailyhffactor 
-    where factor_name in ('pvcorr', 'rvcorr')
-    """
-    with engine.connect() as con:
-        con.execute(sql)
+    files = os.listdir('D:/stock/DataBase/Data/factor')
+    tables = [i.split('.')[0] for i in files]
+    for table in tables:
+        try:
+            sql = """
+            ALTER TABLE `factor`.`%s` 
+            DROP COLUMN `NEUTRAL_FACTOR_VALUE`,
+            DROP COLUMN `PREPROCESSED_FACTOR_VALUE`,
+            CHANGE COLUMN `STOCK_CODE` `STOCK_CODE` VARCHAR(18) NOT NULL
+            """%table
+            with engine.connect() as con:
+                con.execute(sql)
+        except:
+            pass

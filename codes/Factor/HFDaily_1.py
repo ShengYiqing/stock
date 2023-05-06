@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 20)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     
     sql = """
@@ -38,11 +38,9 @@ def generate_factor(start_date, end_date):
             sql = """
                 CREATE TABLE `factor`.`tfactorhf%s` (
               `REC_CREATE_TIME` VARCHAR(14) NULL DEFAULT ' ',
-              `STOCK_CODE` VARCHAR(20) NOT NULL DEFAULT ' ',
+              `STOCK_CODE` VARCHAR(18) NOT NULL DEFAULT ' ',
               `TRADE_DATE` VARCHAR(8) NOT NULL DEFAULT ' ',
               `FACTOR_VALUE` DOUBLE NULL,
-              `PREPROCESSED_FACTOR_VALUE` DOUBLE NULL,
-              `NEUTRAL_FACTOR_VALUE` DOUBLE NULL,
               PRIMARY KEY (`STOCK_CODE`, `TRADE_DATE`))
                 """%factor_name
             with engine.connect() as con:
@@ -53,13 +51,10 @@ def generate_factor(start_date, end_date):
         df = df.set_index(['trade_date', 'stock_code']).loc[:, 'factor_value'].unstack().sort_index()
         df = df.ewm(halflife=5).mean()
         df = df.loc[df.index>=start_date]
-        df_p = tools.standardize(tools.winsorize(df))
-        # df_n = tools.neutralize(df)
-        # df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-        df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-        df_new = df_new.stack()
-        df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-        df_new.to_sql('tfactorhf%s'%factor_name, engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+        df = tools.neutralize(df)
+        df = DataFrame({'factor_value':df.stack()})
+        df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+        df.to_sql('tfactorhf%s'%factor_name, engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

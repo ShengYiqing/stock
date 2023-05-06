@@ -23,33 +23,25 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select STOCK_CODE, TRADE_DATE, TURNOVER_RATE from ttsdailybasic
+    select stock_code, trade_date, pe_ttm from ttsdailybasic
     where trade_date >= {start_date}
     and trade_date <= {end_date}
     """
-    sql = sql.format(start_date=start_date_sql, end_date=end_date)
+    sql = sql.format(start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine)
-    df = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'TURNOVER_RATE']
+    df = df.set_index(['trade_date', 'stock_code']).loc[:, 'pe_ttm']
     df = df.unstack()
-    df.replace(0, np.nan, inplace=True)
+    df = 1 / df
     df = np.log(df)
-    df_copy = df.copy()
-    df = df_copy.ewm(halflife=20).mean()
-    df = df.loc[df.index>=start_date]
-    df.index.name = 'trade_date'
-    df.columns.name = 'stock_code'
-    df_p = tools.standardize(tools.winsorize(df))
-    # df_n = tools.neutralize(df)
-    # df = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-    df = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df = df.stack()
+    df.replace(-np.inf, np.nan, inplace=True)
+    df.replace(np.inf, np.nan, inplace=True)
+    df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactortr', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
+    df.to_sql('tfactorep', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

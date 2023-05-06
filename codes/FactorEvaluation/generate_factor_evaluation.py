@@ -20,18 +20,11 @@ from sqlalchemy import create_engine
 
 import multiprocessing as mp
 
-def f(factor_name, df, start_date, end_date, neutral_list=None):
-    y_d = df.loc[:, 'r_daily'].unstack()
-    y_w = df.loc[:, 'r_weekly'].unstack()
-    y_m = df.loc[:, 'r_monthly'].unstack()
-    
-    if neutral_list == None:
-        x = df.loc[:, factor_name].unstack()
-    else:
-        if 'ind' in neutral_list:
-            ind = 'l3'
-        neutral_list = [i for i in neutral_list if i != 'ind']
-        x = tools.neutralize(df.loc[:, factor_name].unstack(), neutral_list, ind)
+def f(factor_name, df, start_date, end_date):
+    y_d = tools.standardize(tools.winsorize(df.loc[:, 'r_daily'].unstack()))
+    y_w = tools.standardize(tools.winsorize(df.loc[:, 'r_weekly'].unstack()))
+    y_m = tools.standardize(tools.winsorize(df.loc[:, 'r_monthly'].unstack()))
+    x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
     
     ic_d = x.corrwith(y_d, axis=1)
     ic_w = x.corrwith(y_w, axis=1)
@@ -124,17 +117,14 @@ if __name__ == '__main__':
     
     factors = [
         'quality', 'value', 
-        'reversal', 'speculation', 'beta', 
         'dailytech', 'hftech', 
         ]
-    # factors = ['value']
     
-    y_value_type = 'preprocessed'
-    sql = tools.generate_sql_y_x(factors, start_date, end_date, y_value_type=y_value_type)
+    sql = tools.generate_sql_y_x(factors, start_date, end_date)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     pool = mp.Pool(4)
     for factor in factors:
-        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_daily', 'r_weekly', 'r_monthly', factor]], start_date, end_date, gc.FACTOR_NEUTRAL_DIC[factor]))
+        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_daily', 'r_weekly', 'r_monthly', factor]], start_date, end_date))
     pool.close()
     pool.join()

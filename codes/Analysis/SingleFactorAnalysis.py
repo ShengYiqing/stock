@@ -14,7 +14,7 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-def single_factor_analysis(factor_name, start_date, end_date, neutral_list):
+def single_factor_analysis(factor_name, start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     
     sql = tools.generate_sql_y_x([factor_name], start_date, end_date)
@@ -24,32 +24,18 @@ def single_factor_analysis(factor_name, start_date, end_date, neutral_list):
     y = df.loc[:, 'r_daily'].unstack()
     
     tools.factor_analyse(x, y, 10, factor_name)
-    if neutral_list == None:
-        x = df.loc[:, factor_name].unstack()
-    else:
-        if 'ind' in neutral_list:
-            ind = 'l3'
-        neutral_list = [i for i in neutral_list if i != 'ind']
-        x = tools.neutralize(df.loc[:, factor_name].unstack(), neutral_list, ind)
-    
-    x_n = tools.neutralize(x, neutral_list, ind)
-    
-    tools.factor_analyse(x_n, y, 10, factor_name)
     
     
 if __name__ == '__main__':
-    factor_name = 'sigma'
-    neutral_list = ['ind', 'mc']
-    neutral_list = ['ind', 'mc', 'sigma']
-    neutral_list = None
+    factor_name = 'conprofitability'
+    
     factors = [
         'quality', 'value', 
-        'momentum', 'str',
         'dailytech', 'hftech', 
         ]
     
     start_date = '20120101'
     end_date = '20230414'
-    print(factor_name, start_date, end_date, neutral_list)
-    single_factor_analysis(factor_name, start_date, end_date, neutral_list)
+    print(factor_name, start_date, end_date)
+    single_factor_analysis(factor_name, start_date, end_date)
     

@@ -68,15 +68,11 @@ def generate_factor(start_date, end_date):
     factor = DataFrame(dic).T
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
-    
-    factor_p = tools.standardize(tools.winsorize(factor))
-    # factor_n = tools.neutralize(factor)
-    # df_new = pd.concat([factor, factor_p, factor_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-    df_new = pd.concat([factor, factor_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df_new = df_new.stack()
-    df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    factor = tools.neutralize(factor)
+    df = DataFrame({'factor_value':factor.stack()})
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorgross', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorgross', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

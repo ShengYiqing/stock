@@ -19,13 +19,13 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
-start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
+start_date = (datetime.datetime.today() - datetime.timedelta(250)).strftime('%Y%m%d')
 # start_date = '20100101'
 
 
 sql = """
 select t1.stock_code, t1.trade_date, 
-       t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount, 
+       t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount, t4.total_mv mc, 
        t2.adj_factor, t3.suspend_type
 from ttsdaily t1
 left join ttsadjfactor t2
@@ -34,6 +34,9 @@ and t1.stock_code = t2.stock_code
 left join ttssuspend t3
 on t1.trade_date = t3.trade_date
 and t1.stock_code = t3.stock_code
+left join ttsdailybasic t4
+on t1.trade_date = t4.trade_date
+and t1.stock_code = t4.stock_code
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
 """
@@ -46,6 +49,7 @@ HIGH = df.loc[:, 'high']
 LOW = df.loc[:, 'low']
 VOL = df.loc[:, 'vol']
 AMOUNT = df.loc[:, 'amount']
+MC = df.loc[:, 'mc']
 ADJ = df.loc[:, 'adj_factor']
 suspend = df.loc[:, 'suspend_type']
 
@@ -57,18 +61,15 @@ r_d = AVG_hfq.shift(-2) - AVG_hfq.shift(-1)
 r_w = AVG_hfq.shift(-6) - AVG_hfq.shift(-1)
 r_m = AVG_hfq.shift(-21) - AVG_hfq.shift(-1)
 
-r_d_p = tools.standardize(tools.winsorize(r_d))
-r_w_p = tools.standardize(tools.winsorize(r_w))
-r_m_p = tools.standardize(tools.winsorize(r_m))
-
-r_d_n = tools.neutralize(r_d.dropna(how='all'))
-r_w_n = tools.neutralize(r_w.dropna(how='all'))
-r_m_n = tools.neutralize(r_m.dropna(how='all'))
-
 yiziban = (HIGH == LOW).astype(int)
+yiziban = yiziban.shift(-1)
+yiziban.iloc[-1, :] = 0
+
 suspend = suspend.copy()
 suspend[suspend.notna()] = 1
 suspend.fillna(0, inplace=True)
+suspend = suspend.shift(-1)
+suspend.iloc[-1, :] = 0
 
 days_new = 250
 start_date_new = tools.trade_date_shift(start_date, days_new)
@@ -86,24 +87,21 @@ new.fillna(method='ffill', limit=days_new, inplace=True)
 new = DataFrame(new, index=r_d.index, columns=r_d.columns)
 new.fillna(0, inplace=True)
 
+low_amount = (AMOUNT.rolling(250, min_periods=20).mean().rank(axis=1, pct=True) < 0.2).astype(int)
+low_amount[AMOUNT.isna()] = 1
+
+low_mc = (MC.rank(axis=1, pct=True) < 0.618).astype(int)
+low_mc[MC.isna()] = 1
 
 
-is_trade = yiziban + suspend + new
+is_trade = yiziban + suspend + new + low_amount + low_mc
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 is_trade = 1 - is_trade
-is_trade.replace(0, np.nan, inplace=True)
-is_trade = is_trade.shift(-1)
-is_trade.iloc[-1, :] = 1
+
 df = pd.concat({'R_DAILY':r_d, 
                 'R_WEEKLY':r_w, 
                 'R_MONTHLY':r_m, 
-                'PREPROCESSED_R_DAILY':r_d_p, 
-                'PREPROCESSED_R_WEEKLY':r_w_p, 
-                'PREPROCESSED_R_MONTHLY':r_m_p, 
-                'NEUTRAL_R_DAILY':r_d_n, 
-                'NEUTRAL_R_WEEKLY':r_w_n, 
-                'NEUTRAL_R_MONTHLY':r_m_n, 
                 'IS_TRADE':is_trade}, axis=1)
 df = df.stack()
 

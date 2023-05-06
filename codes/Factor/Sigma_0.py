@@ -27,7 +27,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t1.AMOUNT, t2.ADJ_FACTOR from ttsdaily t1
+    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t2.ADJ_FACTOR from ttsdaily t1
     left join ttsadjfactor t2
     on t1.STOCK_CODE = t2.STOCK_CODE
     and t1.TRADE_DATE = t2.TRADE_DATE
@@ -42,28 +42,21 @@ def generate_factor(start_date, end_date):
     ADJ_FACTOR = ADJ_FACTOR.unstack()
     CLOSE = np.log(CLOSE * ADJ_FACTOR)
     r = CLOSE.diff()
-    a = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'AMOUNT'].unstack()
-    
-    l = (a / r.abs()).ewm(halflife=60).mean()
-    l = np.log(l)
-    
-    df = l.copy()
+    df_copy = r.copy()
+    df = df_copy.ewm(halflife=20).std()
     df = df.loc[df.index>=start_date]
+    df.replace(np.inf, np.nan, inplace=True)
+    df.replace(-np.inf, np.nan, inplace=True)
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df_p = tools.standardize(tools.winsorize(df))
-    # df_n = tools.neutralize(df)
-    # df_new = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-    df_new = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df_new = df_new.stack()
-    df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df = DataFrame({'factor_value':df.stack()})
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorliquidity', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
-
+    df.to_sql('tfactorsigma', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
     start_date = '20100101'
     generate_factor(start_date, end_date)

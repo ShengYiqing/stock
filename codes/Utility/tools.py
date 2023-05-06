@@ -92,7 +92,14 @@ def factor_analyse(x, y, num_group, factor_name):
         group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
         group_pos[n][~group_pos[n]] = np.nan
         group_pos[n] = 1 * group_pos[n]
-            
+        
+    plt.figure(figsize=(16, 12))
+    group_mean = {}
+    for n in range(num_group):
+        group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
+        group_mean[n].plot()
+    plt.legend(['%s'%i for i in range(num_group)], loc="best")
+
     plt.figure(figsize=(16, 12))
     group_mean = {}
     for n in range(num_group):
@@ -132,86 +139,12 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.title(factor_name+'-group return std')
     # plt.savefig('%s/Results/%s/group_std_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
     
-def generate_finance_formula(formula, start_date, end_date, shift=2000, method=None):
-    if shift < 2000:
-        shift = 2000
-    start_date_data = trade_date_shift(start_date, shift)
     
-    formula = formula.replace(' ', '')
-    subjects = formula.replace('(', ' ').replace(')', ' ').replace('+', ' ').replace('-', ' ').replace('*', ' ').replace('/', ' ').split(' ')
-    subjects = list(filter(lambda x:x!= '', subjects))
-    
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
-    
-    stock_codes = []
-    subject_df_dic = {}
-    for table_subject in subjects:
-        table = table_subject.split('.')[0]
-        subject = table_subject.split('.')[1]
-        sql = """
-        select stock_code, end_date, f_ann_date, update_flag, {subject} from  
-        """.format(subject=subject)
-        if table == 't1':
-            sql = sql + """ ttsbalancesheet """
-        if table == 't2':
-            sql = sql + """ ttsincome """
-        if table == 't3':
-            sql = sql + """ ttscashflow """
-        sql = sql + """ where end_date >= \'{start_date_data}\' """.format(start_date_data=start_date_data)
-        sql = sql + """ and substr(end_date, 5) in ('0331', '0630', '0930', '1231') """
-        sql = sql + """ and comp_type = '1' """
-        subject_df_dic[subject] = pd.read_sql(sql, engine)
-        stock_codes.extend(list(subject_df_dic[subject].stock_code))
-        stock_codes = list(set(stock_codes))
-    stock_codes = sorted(stock_codes)
-    trade_cal = get_trade_cal(start_date, end_date)
-    factor = DataFrame(index=trade_cal, columns=stock_codes)
-    for trade_date in trade_cal:
-        print(trade_date)
-        trade_date_start = trade_date_shift(trade_date, shift)
-        
-        for table_subject in subjects:
-            table = table_subject.split('.')[0]
-            subject = table_subject.split('.')[1]
-            df = subject_df_dic[subject]
-            df = df.loc[(df.f_ann_date<=trade_date)&(df.end_date>=trade_date_start), :]
-            df = df.sort_values(['stock_code', 'end_date', 'f_ann_date', 'update_flag']).groupby(['stock_code', 'end_date']).last()
-            df_tmp = df.loc[:, subject].unstack(['stock_code'])
-            if table == 't1':
-                df_tmp = df_tmp.rolling(2, min_periods=1).mean()
-            else:
-                cols = df_tmp.columns
-                df_tmp['YYYY'] = [ind[:4] for ind in df_tmp.index]
-                df_tmp = df_tmp.groupby('YYYY').apply(lambda x:(x.sub(x.shift().fillna(0, limit=1))))
-                df_tmp = df_tmp.loc[:, cols]
-            exec("""%s = DataFrame(df_tmp, columns=stock_codes).fillna(0)"""%subject)
-        
-        factor_tmp = eval(formula.replace('t1.', '').replace('t2.', '').replace('t3.', ''))
-        factor_tmp.replace(0, np.nan, inplace=True)
-        
-        if method == None or method == '':
-            factor_tmp = factor_tmp.rolling(20, min_periods=4).mean()
-        if method == 'd':
-            factor_tmp = factor_tmp.rolling(4, min_periods=1).mean().diff(20)
-        if method == 's':
-            factor_tmp = factor_tmp.rolling(20, min_periods=4).std()
-        factor_tmp.fillna(method='ffill', limit=1, inplace=True)
-        
-        factor.loc[trade_date, :] = factor_tmp.iloc[-1,:]
-    factor = factor.astype(float)
-    return factor
-    
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True, factor_value_type_dic=None, y_value_type='original'):
-    if factor_value_type_dic == None:
-        factor_value_type_dic = {factor_name: 'preprocessed_factor_value' for factor_name in factor_names}
-        
-    if y_value_type == 'original':
-        sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
-    else:
-        sql = ' select t1.trade_date, t1.stock_code, t1.{y_value_type}_r_daily r_daily, t1.{y_value_type}_r_weekly r_weekly, t1.{y_value_type}_r_monthly r_monthly '.format(y_value_type=y_value_type)
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=False, is_industry=True):
+    sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     
     for factor_name in factor_names:
-        sql += ' , t{factor_name}.{factor_value_type} {factor_name} '.format(factor_name=factor_name, factor_value_type=factor_value_type_dic[factor_name])
+        sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)
     sql += ' from label.tdailylabel t1 '
     for factor_name in factor_names:
         sql += """ left join factor.tfactor{factor_name} t{factor_name} 
@@ -247,6 +180,7 @@ def trade_date_shift(date, shift):
         n = 0
     return trade_cal.loc[n]
 
+
 def download_tushare(pro, api_name, limit=None, retry=10, pause=30, **kwargs):
     for _ in range(retry):
         try:
@@ -270,7 +204,8 @@ def download_tushare(pro, api_name, limit=None, retry=10, pause=30, **kwargs):
         else:
             return df
     return DataFrame()
-        
+       
+ 
 def mysql_replace_into(table, conn, keys, data_iter):
     from sqlalchemy.dialects.mysql import insert
 
@@ -281,7 +216,8 @@ def mysql_replace_into(table, conn, keys, data_iter):
                                                stmt.inserted.values())))
 
     conn.execute(update_stmt)
-  
+
+
 def get_trade_cal(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     sql_trade_cal = """
@@ -291,6 +227,7 @@ def get_trade_cal(start_date, end_date):
     trade_cal = list(pd.read_sql(sql_trade_cal, engine).loc[:, 'cal_date'])
     trade_cal = list(filter(lambda x:(x>=start_date) & (x<=end_date), trade_cal))
     return trade_cal
+
 
 def reg_ts(df, n):
     x = np.arange(n)
@@ -302,6 +239,7 @@ def reg_ts(df, n):
     
     return b, e
 
+
 def neutralize(data, factors=['mc'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
@@ -309,12 +247,12 @@ def neutralize(data, factors=['mc'], ind='l3'):
         engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
         f0 = factors[0]
         sql = """
-        select t{f0}.trade_date trade_date, t{f0}.stock_code stock_code, t{f0}.preprocessed_factor_value {f0}
+        select t{f0}.trade_date trade_date, t{f0}.stock_code stock_code, t{f0}.factor_value {f0}
         """.format(f0=f0)
         if len(factors) > 1:
             for f in factors[1:]:
                 sql += """
-                , t{f}.preprocessed_factor_value {f}
+                , t{f}.factor_value {f}
                 """.format(f=f)
         sql += """
         , tind.l1_name l1, tind.l2_name l2, tind.l3_name l3
@@ -347,9 +285,9 @@ def neutralize(data, factors=['mc'], ind='l3'):
             """.format(f0=f0, trade_date=data.index[0], stock_codes=tuple(data.columns))
         df_n = pd.read_sql(sql, engine)
         df_n = df_n.set_index(['trade_date', 'stock_code'])
-        x = data.stack()
-        x.name = 'x'
-        data = pd.concat([x, df_n], axis=1).dropna()
+        y = data.stack()
+        y.name = 'y'
+        data = pd.concat([y, df_n], axis=1).dropna()
 
         def g(data):
             # pdb.set_trace()
@@ -358,17 +296,17 @@ def neutralize(data, factors=['mc'], ind='l3'):
             else:
                 X = pd.concat([pd.get_dummies(data.loc[:, ind]), data.loc[:, factors]], axis=1).fillna(0)
             
-            # X = data.loc[:, ['mc', 'bp']]
-            # print(X)
-            y = data.loc[:, 'x']
-            # model = LinearRegression(n_jobs=-1)
-            # model.fit(X, y)
-            # y_predict = Series(model.predict(X), index=y.index)
-            y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.01*np.identity(len(X.T))).dot(X.T).dot(y))
+            X = sm.add_constant(X)
+            for factor in factors:
+                X.loc[:, factor] = winsorize(X.loc[:, factor])
+            
+            y = winsorize(data.loc[:, 'y'])
+            
+            y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
             res = standardize(winsorize(y - y_predict))
             return res
         x_n = data.groupby('trade_date', as_index=False).apply(g).reset_index(0, drop=True)
-        # x_n.name = 'neutral_factor_value'
+
         return x_n.unstack()
     else:
         return None

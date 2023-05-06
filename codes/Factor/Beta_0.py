@@ -42,25 +42,30 @@ def generate_factor(start_date, end_date):
     ADJ_FACTOR = ADJ_FACTOR.unstack()
     CLOSE = np.log(CLOSE * ADJ_FACTOR)
     r = CLOSE.diff()
-    df_copy = r.copy()
-    df = df_copy.ewm(halflife=20).std()
+    
+    sql = """
+    select trade_date, close from ttsindexdaily
+    where trade_date >= {start_date}
+    and trade_date <= {end_date}
+    """
+    sql = sql.format(start_date=start_date_sql, end_date=end_date)
+    close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
+    r_m = np.log(close_m).diff()
+    
+    df = r.ewm(halflife=20).corr(r_m) * r.ewm(halflife=20).std()
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df_p = tools.standardize(tools.winsorize(df))
-    # df_n = tools.neutralize(df)
-    # df = pd.concat([df, df_p, df_n], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE', 'NEUTRAL_FACTOR_VALUE'])
-    df = pd.concat([df, df_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df = df.stack()
+    df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorsigma', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
+    df.to_sql('tfactorbeta', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
     start_date = '20100101'
     generate_factor(start_date, end_date)
