@@ -47,7 +47,7 @@ def generate_factor(start_date, end_date):
 
     df = pd.read_sql(sql, engine)
     df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
-    df = df.groupby('trade_date').apply(lambda x:x.rank()/x.notna().sum())
+    df = df.groupby('trade_date').rank(pct=True)
     for factor in factor_dic.keys():
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.mean(1)
