@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
-
+import datetime
 import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
@@ -11,6 +11,19 @@ import matplotlib.pyplot as plt
 import tools
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
+
+# sql = """
+# select trade_date, stock_code, factor_value
+# from factor.tfactorvalue
+# """
+# engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+# df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).factor_value.unstack()
+# df = tools.neutralize(df)
+# df_new = DataFrame({'factor_value':df.stack()})
+# df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+# engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
+# df_new.to_sql('tfactorvalue', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)
+
 
 s = Series([1*0.966**i for i in range(750)])
 
@@ -150,6 +163,6 @@ for table in tables:
 
 
 trade_date = '20221212'
-x1 = 'dailytech'
-x2 = 'pvcorr'
+x1 = 'mc'
+x2 = 'value'
 tools.colinearity_analysis(x1, x2, trade_date)

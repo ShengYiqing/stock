@@ -30,6 +30,8 @@ def colinearity_analysis(x1, x2, trade_date):
     df.dropna(inplace=True)
     plt.figure(figsize=(16, 9))
     plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
+    plt.figure(figsize=(16, 9))
+    plt.scatter(df.iloc[:, 0], df.iloc[:, 1])
     print(df.corr())
 
 def rolling_weight_sum(df_sum, df_weight, n, weight_type):

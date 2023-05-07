@@ -78,6 +78,7 @@ lambda_i = 0.001
 
 factors = [
     'quality', 'value', 
+    'expectation', 
     'dailytech', 'hftech', 
     ]
 

@@ -21,16 +21,18 @@ def single_factor_analysis(factor_name, start_date, end_date):
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     
     x = df.loc[:, factor_name].unstack()
+    # x = tools.neutralize(x)
     y = df.loc[:, 'r_daily'].unstack()
     
     tools.factor_analyse(x, y, 10, factor_name)
     
     
 if __name__ == '__main__':
-    factor_name = 'analystcoverage'
+    factor_name = 'value'
     
     factors = [
         'quality', 'value', 
+        'expectation', 
         'dailytech', 'hftech', 
         ]
     

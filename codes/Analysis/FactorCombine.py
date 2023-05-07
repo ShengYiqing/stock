@@ -38,6 +38,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 factors = [
     'quality', 'value', 
+    'expectation', 
     'dailytech', 'hftech', 
     ]
 
@@ -49,7 +50,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20120101'
+start_date = '20200101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -172,7 +173,7 @@ plt.figure(figsize=(16,12))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 10
+num_group = 50
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
