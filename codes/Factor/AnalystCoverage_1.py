@@ -39,11 +39,6 @@ def generate_factor(start_date, end_date):
     
     trade_dates = tools.get_trade_cal(start_date, end_date)
     
-    sql_stock = """
-    select stock_code from tsdata.ttsstockbasic
-    """
-    stocks = pd.read_sql(sql_stock, engine).loc[:, 'stock_code']
-    
     factor = DataFrame()
     dic = {}
     for trade_date in trade_dates:
@@ -54,10 +49,9 @@ def generate_factor(start_date, end_date):
         con_coverage = df_tmp.set_index('stock_code').financial_value.groupby('stock_code').count()
         dic[trade_date] = con_coverage
     factor = DataFrame(dic).T
-    factor = DataFrame(factor, columns=stocks).fillna(0)
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
-    factor = tools.neutralize(factor)
+    # factor = tools.neutralize(factor)
     df = DataFrame({'factor_value':factor.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

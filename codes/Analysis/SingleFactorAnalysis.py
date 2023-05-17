@@ -1,4 +1,3 @@
-
 import datetime
 import os
 import sys
@@ -28,16 +27,15 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
     
 if __name__ == '__main__':
-    factor_name = 'value'
+    factor_name = 'jump'
     
     factors = [
-        'quality', 'value', 
-        'expectation', 
+        'quality', 'expectation', 
         'dailytech', 'hftech', 
         ]
     
     start_date = '20120101'
-    end_date = '20230414'
+    end_date = '20230505'
     print(factor_name, start_date, end_date)
     single_factor_analysis(factor_name, start_date, end_date)
     

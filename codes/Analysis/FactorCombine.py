@@ -27,7 +27,7 @@ n_2 = n_1 + 250
 n_3 = n_2 + 250
 n_4 = n_3 + 250
 n_5 = n_4 + 250
-weight_s = 0.3
+weight_s = 0.382
 
 
 lambda_i = 0.001
@@ -37,8 +37,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 
 factors = [
-    'quality', 'value', 
-    'expectation', 
+    'quality', 'expectation', 
     'dailytech', 'hftech', 
     ]
 
@@ -50,7 +49,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20200101'
+start_date = '20120101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -110,7 +109,8 @@ ic_mean_s_4 = ic_mean_s.shift(n_4)
 ic_mean_s_5 = ic_mean_s.shift(n_5)
 ic_mean_s = pd.concat([ic_mean_s_1, ic_mean_s_2, ic_mean_s_3, ic_mean_s_4, ic_mean_s_5], axis=1, keys=[1, 2, 3, 4, 5]).stack().mean(1).unstack()
 
-ic_mean = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
+ic_mean.loc[:, ['quality', 'expectation']] = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
+ic_mean.fillna(0, inplace=True)
 
 ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
 
@@ -149,7 +149,7 @@ for factor in factors:
     df_x = df.loc[:, factor].unstack()
     df_x = tools.standardize(tools.winsorize(df_x))
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
-x = tools.neutralize(x)
+# x = tools.neutralize(x, ['mc', 'bp', 'sigma', 'tr'])
 #因子分布
 plt.figure(figsize=(16,12))
 plt.hist(x.values.flatten())
@@ -173,7 +173,7 @@ plt.figure(figsize=(16,12))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 50
+num_group = 5
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))

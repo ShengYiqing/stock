@@ -36,7 +36,10 @@ def generate_factor(start_date, end_date):
     and financial_index in ('yysr', 'gmjlr', 'zzc', 'jzc')
     """.format(start_date=start_date_sql, end_date=end_date)
     df_sql = pd.read_sql(sql, engine).sort_values(['financial_index', 'end_date', 'stock_code', 'ann_date'])
-    
+    df_yysr = df_sql.loc[(df_sql.ann_type=='分析师预期')&(df_sql.financial_index=='yysr')]
+    df_gmjlr = df_sql.loc[(df_sql.ann_type=='分析师预期')&(df_sql.financial_index=='gmjlr')]
+    df_zzc = df_sql.loc[(df_sql.ann_type!='分析师预期')&(df_sql.financial_index=='zzc')]
+    df_jzc = df_sql.loc[(df_sql.ann_type!='分析师预期')&(df_sql.financial_index=='jzc')]
     trade_dates = tools.get_trade_cal(start_date, end_date)
     
     factor = DataFrame()
@@ -45,19 +48,20 @@ def generate_factor(start_date, end_date):
         print(trade_date)
         end_date_tmp = trade_date[:4] + '1231'
         start_date_tmp = tools.trade_date_shift(trade_date, 250)
-        df_tmp = df_sql.loc[(df_sql.ann_type=='分析师预期')&(df_sql.financial_index=='yysr')&(df_sql.ann_date>=start_date_tmp)&(df_sql.ann_date<=trade_date)&(df_sql.end_date==end_date_tmp)]
-        con_yysr = df_tmp.set_index(['ann_date', 'stock_code']).financial_value.unstack().ewm(halflife=60).mean()
-        df_tmp = df_sql.loc[(df_sql.ann_type=='分析师预期')&(df_sql.financial_index=='gmjlr')&(df_sql.ann_date>=start_date_tmp)&(df_sql.ann_date<=trade_date)&(df_sql.end_date==end_date_tmp)]
-        con_gmjlr = df_tmp.set_index(['ann_date', 'stock_code']).financial_value.unstack().ewm(halflife=60).mean()
         
-        d_con_yysr = con_yysr.diff().ewm(halflife=20).mean().iloc[-1]
-        d_con_gmjlr = con_gmjlr.diff().ewm(halflife=20).mean().iloc[-1]
+        yysr_tmp = df_yysr.loc[(df_yysr.ann_date>=start_date_tmp)&(df_yysr.ann_date<=trade_date)&(df_yysr.end_date==end_date_tmp)]
+        con_yysr = yysr_tmp.set_index(['ann_date', 'stock_code']).financial_value.unstack().ewm(halflife=60, min_periods=5).mean()
+        gmjlr_tmp = df_gmjlr.loc[(df_gmjlr.ann_date>=start_date_tmp)&(df_gmjlr.ann_date<=trade_date)&(df_gmjlr.end_date==end_date_tmp)]
+        con_gmjlr = gmjlr_tmp.set_index(['ann_date', 'stock_code']).financial_value.unstack().ewm(halflife=60, min_periods=5).mean()
         
-        df_tmp = df_sql.loc[(df_sql.ann_type!='分析师预期')&(df_sql.financial_index=='zzc')&(df_sql.ann_date>=start_date_tmp)&(df_sql.ann_date<=trade_date)]
-        zzc = df_tmp.set_index(['stock_code', 'end_date', 'ann_date']).financial_value.sort_index().groupby('stock_code').last()
+        d_con_yysr = con_yysr.diff(60).iloc[-1]
+        d_con_gmjlr = con_gmjlr.diff(60).iloc[-1]
+        
+        zzc_tmp = df_zzc.loc[(df_zzc.ann_date>=start_date_tmp)&(df_zzc.ann_date<=trade_date)]
+        zzc = zzc_tmp.set_index(['stock_code', 'end_date', 'ann_date']).financial_value.sort_index().groupby('stock_code').last()
         zzc[zzc<=0] = np.nan
-        df_tmp = df_sql.loc[(df_sql.ann_type!='分析师预期')&(df_sql.financial_index=='jzc')&(df_sql.ann_date>=start_date_tmp)&(df_sql.ann_date<=trade_date)]
-        jzc = df_tmp.set_index(['stock_code', 'end_date', 'ann_date']).financial_value.sort_index().groupby('stock_code').last()
+        jzc_tmp = df_jzc.loc[(df_jzc.ann_date>=start_date_tmp)&(df_jzc.ann_date<=trade_date)]
+        jzc = jzc_tmp.set_index(['stock_code', 'end_date', 'ann_date']).financial_value.sort_index().groupby('stock_code').last()
         jzc[jzc<=0] = np.nan
         
         con_operation_improvement = (d_con_yysr / zzc).dropna()
@@ -69,8 +73,8 @@ def generate_factor(start_date, end_date):
     factor = DataFrame(dic).T
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
-    factor = tools.neutralize(factor)
-    df = DataFrame({'factor_value':factor.stack()})
+    # factor = tools.neutralize(factor)
+    df = DataFrame({'factor_value':factor.stack().replace(-np.inf, np.nan).replace(np.inf, np.nan).dropna()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     df.to_sql('tfactorconimprovement', engine, schema='factor', if_exists='append', index=True, chunksize=5000, method=tools.mysql_replace_into)

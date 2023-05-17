@@ -82,7 +82,7 @@ def generate_factor(start_date, end_date):
     factor = DataFrame(dic).T
     factor.index.name = 'trade_date'
     factor.columns.name = 'stock_code'
-    factor = tools.neutralize(factor)
+    # factor = tools.neutralize(factor)
     df = DataFrame({'factor_value':factor.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

@@ -57,23 +57,14 @@ def generate_factor(start_date, end_date):
     group by stock_code, month
     """.format(start_month=start_month, end_month=end_month)
     df_f = pd.read_sql(sql_f, engine)
-    f_m = df_f.set_index(['trade_date', 'stock_code']).times.unstack().fillna(0)
-    f_d = df_f.set_index(['trade_date', 'stock_code']).times.unstack().fillna(0).diff()
-    f_d[f_d<0] = 0
-    f_m.index = pd.to_datetime(f_m.index)
-    f_d.index = pd.to_datetime(f_d.index)
-    f_m = f_m.resample('d').bfill()
-    f_d = f_d.resample('d').bfill()
-    f_m.index = [i.strftime('%Y%m%d') for i in f_m.index]
-    f_d.index = [i.strftime('%Y%m%d') for i in f_d.index]
-    f_m = Series(f_m.stack(), index=df.set_index(['trade_date', 'stock_code']).index).fillna(0)
-    f_d = Series(f_d.stack(), index=df.set_index(['trade_date', 'stock_code']).index).fillna(0)
-    f = f_m.groupby('trade_date').rank(pct=True) + f_d.groupby('trade_date').rank(pct=True)
+    f_m = df_f.set_index(['trade_date', 'stock_code']).times.unstack().rolling(3, min_periods=1).sum()
     
-    df = f.unstack()
-    df.index.name = 'trade_date'
-    df.columns.name = 'stock_code'
-    df = tools.neutralize(df)
+    f_m.index = pd.to_datetime(f_m.index)
+    f_m = f_m.resample('d').bfill()
+    f_m.index = [i.strftime('%Y%m%d') for i in f_m.index]
+    f_m.index.name = 'trade_date'
+    df = f_m
+    # df = tools.neutralize(df)
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

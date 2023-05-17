@@ -116,8 +116,7 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'quality', 'value', 
-        'expectation', 
+        'quality', 'expectation', 
         'dailytech', 'hftech', 
         ]
     

@@ -29,10 +29,10 @@ def colinearity_analysis(x1, x2, trade_date):
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     df.dropna(inplace=True)
     plt.figure(figsize=(16, 9))
-    plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
-    plt.figure(figsize=(16, 9))
     plt.scatter(df.iloc[:, 0], df.iloc[:, 1])
-    print(df.corr())
+    plt.figure(figsize=(16, 9))
+    plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
+    print(df.corr(method='spearman'))
 
 def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     columns = sorted(set(list(df_sum.columns)).intersection(set(list(df_weight.columns))))
@@ -242,7 +242,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc'], ind='l3'):
+def neutralize(data, factors=['mc', 'bp'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

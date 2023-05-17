@@ -51,7 +51,7 @@ def generate_factor(start_date, end_date):
         df = df.set_index(['trade_date', 'stock_code']).loc[:, 'factor_value'].unstack().sort_index()
         df = df.ewm(halflife=5).mean()
         df = df.loc[df.index>=start_date]
-        df = tools.neutralize(df)
+        # df = tools.neutralize(df)
         df = DataFrame({'factor_value':df.stack()})
         df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
         df.to_sql('tfactorhf%s'%factor_name, engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)

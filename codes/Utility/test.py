@@ -154,7 +154,7 @@ quality_analyse(stock_code)
 files = os.listdir('D:/stock/DataBase/Data/factor')
 tables = [i.split('.')[0] for i in files]
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
-tables = ['tfactoramount']
+# tables = ['tfactoramount']
 for table in tables:
     print(table)
     sql = """optimize table factor.%s"""%table
@@ -162,7 +162,7 @@ for table in tables:
         conn.execute(sql)
 
 
-trade_date = '20221212'
-x1 = 'mc'
-x2 = 'value'
+trade_date = '20170109'
+x1 = 'bp'
+x2 = 'mc'
 tools.colinearity_analysis(x1, x2, trade_date)

@@ -25,7 +25,8 @@ start_date = (datetime.datetime.today() - datetime.timedelta(250)).strftime('%Y%
 
 sql = """
 select t1.stock_code, t1.trade_date, 
-       t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount, t4.total_mv mc, 
+       t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount, 
+       t4.total_mv mc, (t4.total_mv / t4.pb) b, (t4.total_mv / t4.ps_ttm) s, 
        t2.adj_factor, t3.suspend_type
 from ttsdaily t1
 left join ttsadjfactor t2
@@ -50,6 +51,8 @@ LOW = df.loc[:, 'low']
 VOL = df.loc[:, 'vol']
 AMOUNT = df.loc[:, 'amount']
 MC = df.loc[:, 'mc']
+b = df.loc[:, 'b']
+s = df.loc[:, 's']
 ADJ = df.loc[:, 'adj_factor']
 suspend = df.loc[:, 'suspend_type']
 
@@ -90,11 +93,19 @@ new.fillna(0, inplace=True)
 low_amount = (AMOUNT.rolling(250, min_periods=20).mean().rank(axis=1, pct=True) < 0.2).astype(int)
 low_amount[AMOUNT.isna()] = 1
 
-low_mc = (MC.rank(axis=1, pct=True) < 0.618).astype(int)
+low_mc = (MC.rank(axis=1, pct=True) < 0.8).astype(int)
 low_mc[MC.isna()] = 1
 
+low_p = (CLOSE.rank(axis=1, pct=True) < 0.2).astype(int)
+low_p[CLOSE.isna()] = 1
 
-is_trade = yiziban + suspend + new + low_amount + low_mc
+low_b = (b.rank(axis=1, pct=True) < 0.2).astype(int)
+low_b[b.isna()] = 1
+
+low_s = (s.rank(axis=1, pct=True) < 0.2).astype(int)
+low_s[s.isna()] = 1
+
+is_trade = yiziban + suspend + new + low_amount + low_mc + low_p + low_b + low_s
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 is_trade = 1 - is_trade

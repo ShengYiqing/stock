@@ -40,16 +40,16 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230505'
+trade_date = '20230516'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688111', '603345', '603517', '000869'
+buy_list = ['603605', '002624',
             ]
 
-sell_list= ['603056', '600616', '002010', '600391', '002009', 
-            '000823', '300873', '600590', '603605', '688135', 
+sell_list= ['603026', '688556', '605507', '603690', '603416', 
+            '603203', '300705', '688677', '603989', '300693'
             ]
 
 position.extend(buy_list)
@@ -72,13 +72,12 @@ n_2 = n_1 + 250
 n_3 = n_2 + 250
 n_4 = n_3 + 250
 n_5 = n_4 + 250
-weight_s = 0.3
+weight_s = 0.382
 
 lambda_i = 0.001
 
 factors = [
-    'quality', 'value', 
-    'expectation', 
+    'quality', 'expectation', 
     'dailytech', 'hftech', 
     ]
 
@@ -186,7 +185,7 @@ for factor in factors:
     df_x = df.loc[:, factor].unstack()
     df_x = tools.standardize(tools.winsorize(df_x))
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
-x = tools.neutralize(x).reset_index(-1, drop=True).unstack()
+# x = tools.neutralize(x, ['mc', 'bp', 'sigma', 'tr']).reset_index(-1, drop=True).unstack()
 r_hat = x
 stocks_all = sorted(list(set(list(r_hat.columns)+(position))))
 r_hat = DataFrame(r_hat, columns=stocks_all)
