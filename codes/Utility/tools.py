@@ -242,7 +242,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc', 'bp'], ind='l3'):
+def neutralize(data, factors=['mc', 'bp'], ind=None):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

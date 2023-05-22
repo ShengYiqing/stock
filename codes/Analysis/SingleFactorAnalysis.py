@@ -27,7 +27,7 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
     
 if __name__ == '__main__':
-    factor_name = 'jump'
+    factor_name = 'hftech'
     
     factors = [
         'quality', 'expectation', 
