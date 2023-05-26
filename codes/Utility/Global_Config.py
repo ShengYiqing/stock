@@ -45,6 +45,7 @@ for line in sheet.iter_rows():
     if line[1].value not in WHITE_INDUSTRY_DIC[line[0].value].keys():
         WHITE_INDUSTRY_DIC[line[0].value][line[1].value] = []
     if line[2].fill.fgColor.rgb != 'FFFFFF00':
+    # if True:
         WHITE_INDUSTRY_DIC[line[0].value][line[1].value].append(line[2].value)
 WHITE_INDUSTRY_LIST = []
 for k1 in WHITE_INDUSTRY_DIC.keys():

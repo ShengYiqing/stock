@@ -40,15 +40,15 @@ ind = pd.read_sql(sql_ind, engine)
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230522'
+trade_date = '20230525'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688188', 
+buy_list = ['300033', '603019'
             ]
 
-sell_list= ['300450', '601012', '600298', '300604', '300595', 
+sell_list= ['600150', '300124'
             ]
 
 position.extend(buy_list)
