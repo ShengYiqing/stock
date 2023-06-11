@@ -18,7 +18,8 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
     sql = tools.generate_sql_y_x([factor_name], start_date, end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    
+    # df.loc[:, ['reversal', 'pvcorr']] = (-1) * df.loc[:, ['reversal', 'pvcorr']]
+    # x = df.groupby('trade_date').rank(pct=True).loc[:, ['reversal', 'wmdaily', 'pvcorr', 'beta']].mean(1).unstack()
     x = df.loc[:, factor_name].unstack()
     # x = tools.neutralize(x)
     y = df.loc[:, 'r_daily'].unstack()
@@ -27,7 +28,7 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
     
 if __name__ == '__main__':
-    factor_name = 'hftech'
+    factor_name = 'reversal'
     
     factors = [
         'quality', 'expectation', 

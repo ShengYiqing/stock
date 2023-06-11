@@ -38,17 +38,19 @@ order by l1_name, l2_name, l3_name"""
 ind = pd.read_sql(sql_ind, engine)
 
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
+ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
+ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230525'
+trade_date = '20230609'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['300033', '603019'
+buy_list = ['600588', '605499', '600845'
             ]
 
-sell_list= ['600150', '300124'
+sell_list= ['603039', '000739', '688188'
             ]
 
 position.extend(buy_list)
@@ -77,7 +79,8 @@ lambda_i = 0.001
 
 factors = [
     'quality', 'expectation', 
-    'dailytech', 'hftech', 
+    'beta', 'pvcorr', 'wmdaily', 
+    'hftech', 
     ]
 
 ic_sub = {'mc':0.01, 'bp':0.01}
@@ -137,15 +140,15 @@ sql_tr = sql_tr.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_dat
 df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name']).loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
 
 ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
-ic_mean_s = df_ic.rolling(seasonal_n_mean, min_periods=5).mean().fillna(0)
-ic_mean_s_1 = ic_mean_s.shift(n_1)
-ic_mean_s_2 = ic_mean_s.shift(n_2)
-ic_mean_s_3 = ic_mean_s.shift(n_3)
-ic_mean_s_4 = ic_mean_s.shift(n_4)
-ic_mean_s_5 = ic_mean_s.shift(n_5)
-ic_mean_s = pd.concat([ic_mean_s_1, ic_mean_s_2, ic_mean_s_3, ic_mean_s_4, ic_mean_s_5], axis=1, keys=[1, 2, 3, 4, 5]).stack().mean(1).unstack()
+# ic_mean_s = df_ic.rolling(seasonal_n_mean, min_periods=5).mean().fillna(0)
+# ic_mean_s_1 = ic_mean_s.shift(n_1)
+# ic_mean_s_2 = ic_mean_s.shift(n_2)
+# ic_mean_s_3 = ic_mean_s.shift(n_3)
+# ic_mean_s_4 = ic_mean_s.shift(n_4)
+# ic_mean_s_5 = ic_mean_s.shift(n_5)
+# ic_mean_s = pd.concat([ic_mean_s_1, ic_mean_s_2, ic_mean_s_3, ic_mean_s_4, ic_mean_s_5], axis=1, keys=[1, 2, 3, 4, 5]).stack().mean(1).unstack()
 
-ic_mean = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
+# ic_mean = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
 
 ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
 
@@ -176,7 +179,8 @@ sql = tools.generate_sql_y_x(factors + ['mc', 'bp'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-
+df.loc[:, 'mc'] = tools.standardize(df.loc[:, 'mc'])
+df.loc[:, 'bp'] = tools.standardize(df.loc[:, 'bp'])
 y = df.loc[:, 'r_daily'].unstack()
 
 x = DataFrame(dtype='float64')
@@ -251,7 +255,7 @@ n = 1000
 buy_dic = {}
 # ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_3'] if len(set(list(ind.loc[ind.loc[:, 'ind_1']==i, 'ind_3'])) & set(gc.WHITE_INDUSTRY_LIST)) > 0}
 
-for ind in gc.WHITE_INDUSTRY_LIST:
+for ind in ind_num_dic_3.keys():
     stocks = list(stock_ind.index[stock_ind.loc[:, 'ind_3']==ind])
     stocks = list(set(stocks).intersection(stocks_all) - set(position))
     ret_tmp = ret.loc[stocks].sort_values(ascending=False)

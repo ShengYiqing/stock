@@ -45,7 +45,7 @@ def generate_factor(start_date, end_date):
     OPEN = OPEN.unstack()
     OPEN = np.log(OPEN * ADJ_FACTOR)
     r_jump = OPEN - CLOSE.shift()
-    df = r_jump.ewm(halflife=5).mean()
+    df = r_jump.ewm(halflife=20).mean()
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -55,7 +55,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorjump', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
+    df.to_sql('tfactorjump', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

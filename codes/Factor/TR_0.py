@@ -38,7 +38,7 @@ def generate_factor(start_date, end_date):
     df.replace(0, np.nan, inplace=True)
     df = np.log(df)
     df_copy = df.copy()
-    df = df_copy.ewm(halflife=20).mean()
+    df = df_copy.ewm(halflife=60).mean()
     df = df.loc[df.index>=start_date]
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

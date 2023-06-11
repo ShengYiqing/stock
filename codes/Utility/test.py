@@ -39,7 +39,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=ut
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack()
 df.index = pd.to_datetime(df.index)
 df = df.resample('M').mean()
-plot_acf(df.bp, lags=60)
+plot_acf(df.quality, lags=60)
 
 df.index = [i.strftime('%Y%m%d') for i in df.index]
 factor_names = df.columns
@@ -60,6 +60,8 @@ for factor_name in factor_names:
     plt.figure(figsize=(16, 9))
     df_tmp_dic[factor_name].T.boxplot()
     plt.title(factor_name)
+    
+    
 sql = """
 select trade_date, stock_code, r_daily
 from label.tdailylabel
@@ -163,6 +165,6 @@ for table in tables:
 
 
 trade_date = '20170109'
-x1 = 'bp'
-x2 = 'mc'
+x1 = 'wmtr'
+x2 = 'wmsm'
 tools.colinearity_analysis(x1, x2, trade_date)

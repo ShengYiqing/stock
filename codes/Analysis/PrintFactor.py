@@ -34,7 +34,7 @@ if __name__ == '__main__':
         'core', 'profitability', 'cash', 
         'growth', 'stability'
         ]
-    trade_date = '20230508'
+    trade_date = '20230605'
     
     print(factors, trade_date)
     

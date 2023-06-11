@@ -76,7 +76,7 @@ def f(date, stock):
         print(date, stock, ' fail')
 if __name__ == '__main__':
     date = datetime.datetime.today().strftime('%Y%m%d')
-    # date = '20230411'
+    # date = '20230601'
     start_date = date
     end_date = date
     trade_cal = tools.get_trade_cal(start_date=date, end_date=date)
@@ -95,14 +95,12 @@ if __name__ == '__main__':
 
     pro = ts.pro_api()
     #获取日期
-    df_dates = pro.trade_cal(exchange='SZSE', start_date=start_date, end_date=end_date)
-    dates = df_dates.cal_date[df_dates.is_open==1]
-    
+    dates = tools.get_trade_cal(start_date, end_date)
     #取数写入
     pool = mp.Pool(2)
 
     for date in dates:
-        pool.apply_async(func=f, args=(date, stocks))
+        # pool.apply_async(func=f, args=(date, stocks))
         if not os.path.exists('D:/stock/DataBase/StockSnapshootData/%s'%date):
             os.mkdir('D:/stock/DataBase/StockSnapshootData/%s'%date)
         for stock in stocks:

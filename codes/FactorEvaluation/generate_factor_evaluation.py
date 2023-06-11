@@ -113,11 +113,12 @@ def f(factor_name, df, start_date, end_date):
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
-    # start_date = '20100101'
+    start_date = '20100101'
     
     factors = [
         'quality', 'expectation', 
-        'dailytech', 'hftech', 
+        'beta', 'pvcorr', 'wmdaily', 
+        'hftech', 
         ]
     
     sql = tools.generate_sql_y_x(factors, start_date, end_date)

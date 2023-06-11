@@ -142,7 +142,7 @@ def factor_analyse(x, y, num_group, factor_name):
     # plt.savefig('%s/Results/%s/group_std_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
     
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=False, is_industry=True):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=False):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     
     for factor_name in factor_names:
@@ -152,10 +152,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white
         sql += """ left join factor.tfactor{factor_name} t{factor_name} 
                    on t1.trade_date = t{factor_name}.trade_date 
                    and t1.stock_code = t{factor_name}.stock_code """.format(factor_name=factor_name)
-    if is_white:
-        sql += """ left join whitelist.tdailywhitelist t2
-                   on t1.trade_date = t2.trade_date
-                   and t1.stock_code = t2.stock_code """
+    
     if is_industry:
         sql += """ left join indsw.tindsw t3
                    on t1.stock_code = t3.stock_code """
@@ -164,7 +161,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white
     if is_trade:
         sql += " and t1.is_trade = 1 "
     if is_white:
-        sql += " and t2.white = 1 "
+        sql += " and t1.is_white = 1 "
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
@@ -242,7 +239,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc', 'bp', 'sigma', 'tr'], ind='l3'):
+def neutralize(data, factors=['mc', 'bp', 'reversal', 'tr'], ind=None):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

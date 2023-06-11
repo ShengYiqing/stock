@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorexpectation` (
+        CREATE TABLE `factor`.`tfactordailytech` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(18) NOT NULL,
@@ -38,13 +38,10 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {
-        'analystcoverage':1, 
-        'conoperation':1, 
-        'conprofitability':1, 
-        'congrowth':1, 
-        'conimprovement':1, 
-        'golden':1, 
-        'goldend':1, 
+        'reversal': -1,
+        'wmdaily': 1,
+        'beta': 1, 
+        'pvcorr': -1, 
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -52,10 +49,9 @@ def generate_factor(start_date, end_date):
     df = pd.read_sql(sql, engine)
     df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
     df = df.groupby('trade_date').rank(pct=True)
-    
     for factor in factor_dic.keys():
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
-    df = df.sum(1)
+    df = df.mean(1)
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
@@ -63,7 +59,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorexpectation', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactordailytech', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
