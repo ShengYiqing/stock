@@ -20,7 +20,7 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 from sqlalchemy.types import VARCHAR
-
+from scipy.stats import zscore
 #%%
 def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
@@ -51,13 +51,14 @@ def generate_factor(start_date, end_date):
     df = pd.read_sql(sql, engine)
     df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
     df = df.groupby('trade_date').rank(pct=True)
+    # apply(zscore, nan_policy='omit')
     for factor in factor_dic.keys():
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.mean(1)
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df = tools.neutralize(df)
+    # df = tools.neutralize(df, ['reversal', 'tr'])
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

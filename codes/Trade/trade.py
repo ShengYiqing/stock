@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230609'
+trade_date = '20230614'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['600588', '605499', '600845'
+buy_list = [
             ]
 
-sell_list= ['603039', '000739', '688188'
+sell_list= ['601318'
             ]
 
 position.extend(buy_list)
@@ -78,7 +78,7 @@ weight_s = 0.382
 lambda_i = 0.001
 
 factors = [
-    'quality', 'expectation', 
+    'quality', 
     'beta', 'pvcorr', 'wmdaily', 
     'hftech', 
     ]
@@ -179,14 +179,15 @@ sql = tools.generate_sql_y_x(factors + ['mc', 'bp'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-df.loc[:, 'mc'] = tools.standardize(df.loc[:, 'mc'])
-df.loc[:, 'bp'] = tools.standardize(df.loc[:, 'bp'])
+df.loc[:, 'mc'] = tools.standardize(tools.winsorize(df.loc[:, 'mc']))
+df.loc[:, 'bp'] = tools.standardize(tools.winsorize(df.loc[:, 'bp']))
+for factor in factors:
+    df.loc[:, factor] = tools.standardize(tools.winsorize(df.loc[:, factor]))
 y = df.loc[:, 'r_daily'].unstack()
 
 x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
-    df_x = tools.standardize(tools.winsorize(df_x))
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 # x = tools.neutralize(x, ['mc', 'bp', 'sigma', 'tr']).reset_index(-1, drop=True).unstack()
 r_hat = x

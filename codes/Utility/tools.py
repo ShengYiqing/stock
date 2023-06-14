@@ -142,7 +142,7 @@ def factor_analyse(x, y, num_group, factor_name):
     # plt.savefig('%s/Results/%s/group_std_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
     
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=False):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     
     for factor_name in factor_names:

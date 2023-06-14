@@ -164,7 +164,7 @@ for table in tables:
         conn.execute(sql)
 
 
-trade_date = '20170109'
-x1 = 'wmtr'
-x2 = 'wmsm'
+trade_date = '20230606'
+x1 = 'corrmarket'
+x2 = 'sigma'
 tools.colinearity_analysis(x1, x2, trade_date)

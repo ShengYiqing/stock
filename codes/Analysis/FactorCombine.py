@@ -37,7 +37,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 
 factors = [
-    'quality', 'expectation', 
+    'quality', 
     'beta', 'pvcorr', 'wmdaily', 
     'hftech', 
     ]
@@ -50,7 +50,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20180101'
+start_date = '20120101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -150,8 +150,9 @@ x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
     df_x = tools.standardize(tools.winsorize(df_x))
+    # df_x = df_x.rank(axis=1, pct=True)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
-# x = tools.neutralize(x, ['mc', 'bp', 'sigma', 'tr'])
+# x = tools.neutralize(x, ['mc', 'bp', 'reversal', 'tr'])
 #因子分布
 plt.figure(figsize=(16,12))
 plt.hist(x.values.flatten())
@@ -175,7 +176,7 @@ plt.figure(figsize=(16,12))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 40
+num_group = 30
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))

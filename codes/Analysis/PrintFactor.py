@@ -34,7 +34,7 @@ if __name__ == '__main__':
         'core', 'profitability', 'cash', 
         'growth', 'stability'
         ]
-    trade_date = '20230605'
+    trade_date = '20230613'
     
     print(factors, trade_date)
     
@@ -72,5 +72,9 @@ if __name__ == '__main__':
     and tind.l3_name in {white_ind}
     order by tind.l1_name, tind.l2_name, tind.l3_name, tmc.factor_value desc
     """.format(trade_date=trade_date, white_ind=tuple(gc.WHITE_INDUSTRY_LIST))
+    # sql += """
+    # where tmc.trade_date = {trade_date}
+    # order by tind.l1_name, tind.l2_name, tind.l3_name, tmc.factor_value desc
+    # """.format(trade_date=trade_date)
     df = pd.read_sql(sql, engine)
     df.loc[:, ['mc']+factors] = df.loc[:, ['mc']+factors].rank(pct=True)

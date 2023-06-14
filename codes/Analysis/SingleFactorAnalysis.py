@@ -32,11 +32,12 @@ if __name__ == '__main__':
     
     factors = [
         'quality', 'expectation', 
-        'dailytech', 'hftech', 
+        'beta', 'pvcorr', 'wmdaily', 
+        'hftech', 
         ]
     
     start_date = '20120101'
-    end_date = '20230505'
+    end_date = '20230605'
     print(factor_name, start_date, end_date)
     single_factor_analysis(factor_name, start_date, end_date)
     

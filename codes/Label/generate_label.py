@@ -117,10 +117,10 @@ from indsw.tindsw
 where l3_name in {l3}
 """.format(l3=tuple(gc.WHITE_INDUSTRY_LIST))
 
-sql_ind = """
-select stock_code, l3_name 
-from indsw.tindsw
-"""
+# sql_ind = """
+# select stock_code, l3_name 
+# from indsw.tindsw
+# """
 
 df_ind = pd.read_sql(sql_ind, engine)
 stock_ind_white = list(df_ind.stock_code)
@@ -139,12 +139,12 @@ def f(s):
     mc_ind_tmp = DataFrame({'mc':mc_tmp, 'ind':stock_ind_s_tmp})
     mc_ind_tmp = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
     # print(mc_ind_tmp)
-    mc_ind_tmp = mc_ind_tmp.loc[mc_ind_tmp.mc<=5]
+    mc_ind_tmp = mc_ind_tmp.loc[mc_ind_tmp.mc<=10]
     # print(mc_ind_tmp)
     white_tmp = list(mc_ind_tmp.reset_index(-1).index)
     
     mc_tmp = mc.loc[trade_date, white_tmp].sort_values(ascending=False)
-    white = mc_tmp.index[:min(800, len(mc_tmp))]
+    white = mc_tmp.index[:min(300, len(mc_tmp))]
     ret = s.copy()
     ret.loc[:] = 0
     ret.loc[white] = 1
