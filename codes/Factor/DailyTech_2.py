@@ -38,10 +38,14 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {
-        'reversal': -1,
-        'wmdaily': 1,
+        'cpv': -1, 
+        'crp': -1, 
+        'crsm': 1, 
+        'crv': -1, 
+        'crsv': 1, 
         'beta': 1, 
-        'pvcorr': -1, 
+        'str': -1, 
+        'trd': -1, 
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")

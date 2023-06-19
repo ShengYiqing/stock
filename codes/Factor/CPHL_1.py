@@ -23,29 +23,40 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select STOCK_CODE, TRADE_DATE, TURNOVER_RATE from ttsdailybasic
-    where trade_date >= {start_date}
-    and trade_date <= {end_date}
+    select t1.stock_code, t1.trade_date, t1.close, t1.high, t1.low, t2.ADJ_FACTOR 
+    from ttsdaily t1
+    left join ttsadjfactor t2
+    on t1.STOCK_CODE = t2.STOCK_CODE
+    and t1.TRADE_DATE = t2.TRADE_DATE
+    where t1.trade_date >= {start_date}
+    and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
-    df = pd.read_sql(sql, engine)
-    df = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'TURNOVER_RATE']
-    df = df.unstack()
-    df.replace(0, np.nan, inplace=True)
-    df = np.log(df)
-    df_copy = df.copy()
-    df = df_copy.ewm(halflife=20).mean()
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+    close = df.loc[:, 'close']
+    high = df.loc[:, 'high']
+    low = df.loc[:, 'low']
+    hl = np.log(high / low).unstack()
+    ADJ_FACTOR = df.loc[:, 'ADJ_FACTOR']
+    close = close.unstack()
+    ADJ_FACTOR = ADJ_FACTOR.unstack()
+    close = close * ADJ_FACTOR
+    close = np.log(close)
+    df = close.ewm(halflife=5).corr(hl)
     df = df.loc[df.index>=start_date]
+    df.replace(np.inf, np.nan, inplace=True)
+    df.replace(-np.inf, np.nan, inplace=True)
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
+    # df = tools.neutralize(df)
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactortr', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcphl', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

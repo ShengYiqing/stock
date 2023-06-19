@@ -28,16 +28,26 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
     
 if __name__ == '__main__':
-    factor_name = 'reversal'
+    factor_name = 'hfbeta'
     
     factors = [
         'quality', 'expectation', 
-        'beta', 'pvcorr', 'wmdaily', 
+        'beta', 'pvcorr', 'wmdaily', 'str', 'hls', 'trd', 'sigmad'
         'hftech', 
         ]
-    
-    start_date = '20120101'
-    end_date = '20230605'
-    print(factor_name, start_date, end_date)
-    single_factor_analysis(factor_name, start_date, end_date)
-    
+    factors = ['cpv', 
+               'crp', 
+               'crsm', 
+               'crv', 
+               'crsv', 
+               'beta', 
+               'str', 
+               'trd', 
+               ]
+    # factors = ['reversal']
+    for factor_name in factors:
+        start_date = '20180101'
+        end_date = '20230605'
+        print(factor_name, start_date, end_date)
+        single_factor_analysis(factor_name, start_date, end_date)
+        

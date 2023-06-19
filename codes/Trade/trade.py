@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230614'
+trade_date = '20230619'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = [
+buy_list = ['688111', '600612', '688082'
             ]
 
-sell_list= ['601318'
+sell_list= ['600132', '300418'
             ]
 
 position.extend(buy_list)
@@ -79,7 +79,7 @@ lambda_i = 0.001
 
 factors = [
     'quality', 
-    'beta', 'pvcorr', 'wmdaily', 
+    'dailytech', 
     'hftech', 
     ]
 
@@ -214,13 +214,13 @@ jz_mask = (2/3<=df.bp)
 ph_mask = (1/3<df.bp)&(df.bp<=2/3)
 cz_mask = (df.bp<=1/3)
 
-df.loc[dp_mask, 'mc'] = '大盘'
-df.loc[zp_mask, 'mc'] = '中盘'
-df.loc[xp_mask, 'mc'] = '小盘'
+# df.loc[dp_mask, 'mc'] = '大盘'
+# df.loc[zp_mask, 'mc'] = '中盘'
+# df.loc[xp_mask, 'mc'] = '小盘'
 
-df.loc[jz_mask, 'bp'] = '价值'
-df.loc[ph_mask, 'bp'] = '平衡'
-df.loc[cz_mask, 'bp'] = '成长'
+# df.loc[jz_mask, 'bp'] = '价值'
+# df.loc[ph_mask, 'bp'] = '平衡'
+# df.loc[cz_mask, 'bp'] = '成长'
 
 hold_dic = {}
 for stock in r_hat_rank.index:

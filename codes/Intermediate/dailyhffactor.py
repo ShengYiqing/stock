@@ -20,6 +20,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.types import VARCHAR
 import statsmodels.formula.api as smf
 
+def Beta(df_sql):
+    c = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
+    c = c.loc[c.index>='093000']
+    r = np.log(c).diff()
+    r_m = r.mean(1)
+    beta = r.corrwith(r_m) * r.std()
+    df = DataFrame({'factor_value':beta})
+    df.loc[:, 'trade_date'] = trade_date
+    df.loc[:, 'factor_name'] = 'beta'
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+
 def CorrMarket(df_sql):
     c = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
     c = c.loc[c.index>='093000']
@@ -129,35 +141,6 @@ def UTR(df_sql):
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
     
-def PVCorr(df_sql):
-    p = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
-    v = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'vol'].unstack()
-    p = p.loc[p.index>='093000']
-    v = v.loc[v.index>='093000']
-    p = np.log(p).replace(-np.inf, np.nan)
-    v = np.log(v).replace(-np.inf, np.nan)
-    c = p.corrwith(v)
-    df = DataFrame({'factor_value':c})
-    df.loc[:, 'trade_date'] = trade_date
-    df.loc[:, 'factor_name'] = 'pvcorr'
-    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
-       
-def RVCorr(df_sql):
-    p = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
-    v = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'vol'].unstack()
-    p = p.loc[p.index>='093000']
-    v = v.loc[v.index>='093000']
-    p = np.log(p).replace(-np.inf, np.nan)
-    r = p.diff()
-    v = np.log(v).replace(-np.inf, np.nan)
-    c = r.corrwith(v)
-    df = DataFrame({'factor_value':c})
-    df.loc[:, 'trade_date'] = trade_date
-    df.loc[:, 'factor_name'] = 'rvcorr'
-    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
-
 def spread(df_sql):
     s = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'spread'].unstack()
     s = s.loc[s.index>='093000']
@@ -178,6 +161,35 @@ def imbalance(df_sql):
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
     
+def PVCorr(df_sql):
+    p = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
+    v = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'vol'].unstack()
+    p = p.loc[p.index>='093000']
+    v = v.loc[v.index>='093000']
+    p = np.log(p).replace(-np.inf, np.nan)
+    v = np.log(v).replace(-np.inf, np.nan)
+    c = p.corrwith(v, method='spearman')
+    df = DataFrame({'factor_value':c})
+    df.loc[:, 'trade_date'] = trade_date
+    df.loc[:, 'factor_name'] = 'pvcorr'
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+       
+def RVCorr(df_sql):
+    p = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
+    v = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'vol'].unstack()
+    p = p.loc[p.index>='093000']
+    v = v.loc[v.index>='093000']
+    p = np.log(p).replace(-np.inf, np.nan)
+    r = p.diff()
+    v = np.log(v).replace(-np.inf, np.nan)
+    c = r.corrwith(v, method='spearman')
+    df = DataFrame({'factor_value':c})
+    df.loc[:, 'trade_date'] = trade_date
+    df.loc[:, 'factor_name'] = 'rvcorr'
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+
 def PSCorr(df_sql): 
     p = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'close'].unstack()
     s = df_sql.set_index(['trade_time', 'stock_code']).loc[:, 'spread'].unstack()
@@ -185,7 +197,7 @@ def PSCorr(df_sql):
     s = s.loc[s.index>='093000']
     p = np.log(p).replace(-np.inf, np.nan)
     s = np.log(s).replace(-np.inf, np.nan)
-    c = p.corrwith(s)
+    c = p.corrwith(s, method='spearman')
     df = DataFrame({'factor_value':c})
     df.loc[:, 'trade_date'] = trade_date
     df.loc[:, 'factor_name'] = 'pscorr'
@@ -198,7 +210,7 @@ def PICorr(df_sql):
     p = p.loc[p.index>='093000']
     i = i.loc[i.index>='093000']
     p = np.log(p).replace(-np.inf, np.nan)
-    c = p.corrwith(i)
+    c = p.corrwith(i, method='spearman')
     df = DataFrame({'factor_value':c})
     df.loc[:, 'trade_date'] = trade_date
     df.loc[:, 'factor_name'] = 'picorr'
@@ -245,18 +257,19 @@ def bluff(df_sql):
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df.to_sql('tdailyhffactor', engine, schema='intermediate', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
-f_list = [CorrMarket, sigma, skew, HL, 
+f_list = [Beta, CorrMarket, 
+          sigma, skew, HL, 
           ETR, TTR, UTR, 
           spread, imbalance, 
-          PSCorr, PICorr, 
+          PVCorr, RVCorr, PSCorr, PICorr, 
           intradaymomentum, callauctionmomentum, 
           bluff]
-# f_list = [bluff, imbalance]
+# f_list = [Beta, PVCorr, RVCorr, PSCorr, PICorr, ]
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
-    # start_date = '20210101'
+    start_date = '20210101'
     # end_date = '20230303'
     # start_date = '20230303'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")

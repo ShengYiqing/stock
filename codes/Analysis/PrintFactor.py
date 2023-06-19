@@ -34,6 +34,7 @@ if __name__ == '__main__':
         'core', 'profitability', 'cash', 
         'growth', 'stability'
         ]
+    factors = ['beta']
     trade_date = '20230613'
     
     print(factors, trade_date)

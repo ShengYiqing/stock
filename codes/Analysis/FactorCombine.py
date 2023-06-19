@@ -38,7 +38,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 factors = [
     'quality', 
-    'beta', 'pvcorr', 'wmdaily', 
+    'dailytech', 
     'hftech', 
     ]
 
