@@ -47,7 +47,8 @@ if __name__ == '__main__':
                'corrmarket', 'beta', 
                'operation', 
                'gross', 'core', 'profitability', 'cash'
-               'growth', 'stability']
+               'growth', 'stability', 
+               'bp']
     for factor_name in factors:
         start_date = '20120101'
         end_date = '20230605'
