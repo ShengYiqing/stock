@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorhftech` (
+        CREATE TABLE `factor`.`tfactorcxx` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(18) NOT NULL,
@@ -38,10 +38,19 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {
-        'hfcallauctionmomentum': 1, 'hfbluff': -1, 
-        'hfcorrmarket': 1,  'hfbeta': 1, 
-        'hfetr': 1, 'hfttr': 1, 'hfutr': -1, 
-        'hfpicorr': -1, 
+        'cpv': -1, 
+        'cphl': -1,
+        
+        'crp': -2, 
+        
+        'crsm': 2, 
+        
+        'crv': -1, 
+        'crhl': -1,
+        
+        'crsv': 1, 
+        'crshl': 1,
+        
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -59,11 +68,11 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorhftech', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcxx', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
-    start_date = '20210101'
+    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+    start_date = '20100101'
     generate_factor(start_date, end_date)

@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 from sklearn.linear_model import LinearRegression
 import pdb
 
-def colinearity_analysis(x1, x2, trade_date):
+def colinearity_analysis(x1, x2, start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     
     sql = """
@@ -25,15 +25,15 @@ def colinearity_analysis(x1, x2, trade_date):
     factor.tfactor{x2} t2
     on t1.trade_date = t2.trade_date
     and t1.stock_code = t2.stock_code
-    where t1.trade_date = {trade_date}""".format(x1=x1, x2=x2, trade_date=trade_date)
+    where t1.trade_date >= {start_date}
+    and t1.trade_date <= {end_date}
+    """.format(x1=x1, x2=x2, start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     df.dropna(inplace=True)
+    r2 = df.groupby('trade_date').apply(lambda x:x.corr(method='spearman').loc[x1, x2]**2).cumsum()
     plt.figure(figsize=(16, 9))
-    plt.scatter(df.iloc[:, 0], df.iloc[:, 1])
-    plt.figure(figsize=(16, 9))
-    plt.scatter(df.iloc[:, 0].rank(), df.iloc[:, 1].rank())
-    print(df.corr(method='spearman'))
-    return df.corr(method='spearman').loc[x1, x2]
+    r2.plot()
+    return r2
 
 def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     columns = sorted(set(list(df_sum.columns)).intersection(set(list(df_weight.columns))))

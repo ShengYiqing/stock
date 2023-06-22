@@ -117,7 +117,8 @@ if __name__ == '__main__':
     
     factors = [
         'quality', 
-        'dailytech', 
+        'cxx', 
+        'beta', 
         'hftech', 
         ]
     

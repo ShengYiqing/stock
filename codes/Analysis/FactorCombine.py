@@ -38,7 +38,8 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 factors = [
     'quality', 
-    'dailytech', 
+    'cxx', 
+    'beta', 
     'hftech', 
     ]
 
@@ -176,7 +177,7 @@ plt.figure(figsize=(16,12))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 30
+num_group = 10
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))

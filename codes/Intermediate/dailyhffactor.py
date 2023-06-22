@@ -269,7 +269,7 @@ f_list = [Beta, CorrMarket,
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
-    start_date = '20210101'
+    # start_date = '20210101'
     # end_date = '20230303'
     # start_date = '20230303'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")

@@ -24,7 +24,7 @@ def single_factor_analysis(factor_name, start_date, end_date):
     # x = tools.neutralize(x)
     y = df.loc[:, 'r_daily'].unstack()
     
-    tools.factor_analyse(x, y, 10, factor_name)
+    tools.factor_analyse(x, y, 3, factor_name)
     
     
 if __name__ == '__main__':
@@ -35,18 +35,21 @@ if __name__ == '__main__':
         'beta', 'pvcorr', 'wmdaily', 'str', 'hls', 'trd', 'sigmad'
         'hftech', 
         ]
-    factors = ['cpv', 
-               'crp', 
-               'crsm', 
-               'crv', 
-               'crsv', 
-               'beta', 
-               'str', 
-               'trd', 
+    factors = ['cxx'
                ]
-    # factors = ['reversal']
+    
+    factors = ['beta', 'cxx', 'quality', 'hftech']
+    factors = ['reversal', 
+               'tr', 'sigma', 
+               'trd', 'sigmad', 
+               'str', 'hls', 
+               'skew', 
+               'corrmarket', 'beta', 
+               'operation', 
+               'gross', 'core', 'profitability', 'cash'
+               'growth', 'stability']
     for factor_name in factors:
-        start_date = '20180101'
+        start_date = '20120101'
         end_date = '20230605'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)

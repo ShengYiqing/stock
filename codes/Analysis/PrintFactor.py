@@ -7,25 +7,11 @@ import pandas as pd
 from pandas import Series, DataFrame
 import matplotlib.pyplot as plt
 import tushare as ts
-import Config
-sys.path.append(Config.GLOBALCONFIG_PATH)
 import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-def single_factor_analysis(factor_name, start_date, end_date):
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
-    
-    sql = tools.generate_sql_y_x([factor_name], start_date, end_date)
-    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    
-    x = df.loc[:, factor_name].unstack()
-    # x = tools.neutralize(x)
-    y = df.loc[:, 'r_daily'].unstack()
-    
-    tools.factor_analyse(x, y, 10, factor_name)
-    
-    
+
 if __name__ == '__main__':
     # factor_name = 'operation'
     factors = [
@@ -35,7 +21,7 @@ if __name__ == '__main__':
         'growth', 'stability'
         ]
     factors = ['beta']
-    trade_date = '20230613'
+    trade_date = '20230619'
     
     print(factors, trade_date)
     
@@ -43,7 +29,7 @@ if __name__ == '__main__':
     
     sql = """
     select 
-    tl.is_trade, 
+    tl.is_trade, tl.is_white, 
     tind.l1_name, tind.l2_name, tind.l3_name, 
     tmc.stock_code, tsb.name, 
     tmc.factor_value mc

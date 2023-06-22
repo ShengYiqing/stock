@@ -22,13 +22,12 @@ end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
 # start_date = '20100101'
 
-start_date_sql = tools.trade_date_shift(start_date, 250)
 
 sql = """
 select t1.stock_code, t1.trade_date, 
        t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount, 
        t4.total_mv mc, t4.circ_mv circ_mc, 
-       (t4.total_mv / t4.ps_ttm) s, 
+       (t4.total_mv / t4.pb) b, (t4.total_mv / t4.ps_ttm) s, 
        t2.adj_factor, t3.suspend_type
 from ttsdaily t1
 left join ttsadjfactor t2
@@ -42,9 +41,8 @@ on t1.trade_date = t4.trade_date
 and t1.stock_code = t4.stock_code
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
-and substr(t1.stock_code, 1, 1) not in ('4', '8')
 """
-sql = sql.format(start_date=start_date_sql, end_date=end_date)
+sql = sql.format(start_date=start_date, end_date=end_date)
 
 df = pd.read_sql(sql, engine)
 df = df.set_index(['trade_date', 'stock_code']).unstack()
@@ -55,6 +53,7 @@ VOL = df.loc[:, 'vol']
 AMOUNT = df.loc[:, 'amount']
 mc = df.loc[:, 'mc']
 circ_mc = df.loc[:, 'circ_mc']
+b = df.loc[:, 'b']
 s = df.loc[:, 's']
 ADJ = df.loc[:, 'adj_factor']
 suspend = df.loc[:, 'suspend_type']
@@ -77,7 +76,7 @@ suspend.fillna(0, inplace=True)
 suspend = suspend.shift(-1)
 suspend.iloc[-1, :] = 0
 
-days_new = 20
+days_new = 250
 start_date_new = tools.trade_date_shift(start_date, days_new)
 trade_dates_new = tools.get_trade_cal(start_date_new, end_date)
 sql_new = """
@@ -93,11 +92,14 @@ new.fillna(method='ffill', limit=days_new, inplace=True)
 new = DataFrame(new, index=r_d.index, columns=r_d.columns)
 new.fillna(0, inplace=True)
 
-low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 30000).astype(int)
+low_amount = (AMOUNT.rolling(250, min_periods=20).mean().rank(axis=1, pct=True) < 0.2).astype(int)
 low_amount[AMOUNT.isna()] = 1
 
-low_p = (CLOSE < 5).astype(int)
+low_p = (CLOSE.rank(axis=1, pct=True) < 0.2).astype(int)
 low_p[CLOSE.isna()] = 1
+
+low_b = (b.rank(axis=1, pct=True) < 0.2).astype(int)
+low_b[b.isna()] = 1
 
 low_s = (s.rank(axis=1, pct=True) < 0.2).astype(int)
 low_s[s.isna()] = 1
@@ -105,7 +107,7 @@ low_s[s.isna()] = 1
 low_cmc = (circ_mc.rank(axis=1, pct=True) < 0.2).astype(int)
 low_cmc[circ_mc.isna()] = 1
 
-is_trade = yiziban + suspend + new + low_amount + low_p + low_s + low_cmc
+is_trade = yiziban + suspend + new + low_amount + low_p + low_b + low_s + low_cmc
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 
@@ -114,6 +116,11 @@ select stock_code, l3_name
 from indsw.tindsw
 where l3_name in {l3}
 """.format(l3=tuple(gc.WHITE_INDUSTRY_LIST))
+
+# sql_ind = """
+# select stock_code, l3_name 
+# from indsw.tindsw
+# """
 
 df_ind = pd.read_sql(sql_ind, engine)
 stock_ind_white = list(df_ind.stock_code)
@@ -133,12 +140,12 @@ def f(s):
     mc_ind_tmp_p = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(pct=True, ascending=False)
     mc_ind_tmp = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
     # print(mc_ind_tmp)
-    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=10) | (mc_ind_tmp_p.mc<=0.9)]
+    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=3) | (mc_ind_tmp_p.mc<=0.2)]
     # print(mc_ind_tmp)
     white_tmp = list(mc_ind_tmp.reset_index(-1).index)
     
     mc_tmp = mc.loc[trade_date, white_tmp].sort_values(ascending=False)
-    white = mc_tmp.index[:min(777, len(mc_tmp))]
+    white = mc_tmp.index[:min(168, len(mc_tmp))]
     ret = s.copy()
     ret.loc[:] = 0
     ret.loc[white] = 1
@@ -150,7 +157,6 @@ df = pd.concat({'R_DAILY':r_d,
                 'R_MONTHLY':r_m, 
                 'IS_TRADE':is_trade,
                 'IS_WHITE':is_white}, axis=1)
-df = df.loc[df.index>=start_date]
 df = df.stack()
 
 df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
