@@ -153,7 +153,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white
         sql += """ left join factor.tfactor{factor_name} t{factor_name} 
                    on t1.trade_date = t{factor_name}.trade_date 
                    and t1.stock_code = t{factor_name}.stock_code """.format(factor_name=factor_name)
-    
+
     if is_industry:
         sql += """ left join indsw.tindsw t3
                    on t1.stock_code = t3.stock_code """

@@ -5,10 +5,6 @@ import sys
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
-sys.path.append('../../Codes')
-import Config
-sys.path.append(Config.GLOBALCONFIG_PATH)
-
 import Global_Config as gc
 import tools
 import matplotlib.pyplot as plt
@@ -19,10 +15,10 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
-start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
+start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
 # start_date = '20100101'
 
-start_date_sql = tools.trade_date_shift(start_date, 250)
+start_date_sql = tools.trade_date_shift(start_date, 60)
 
 sql = """
 select t1.stock_code, t1.trade_date, 
@@ -93,19 +89,22 @@ new.fillna(method='ffill', limit=days_new, inplace=True)
 new = DataFrame(new, index=r_d.index, columns=r_d.columns)
 new.fillna(0, inplace=True)
 
-low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 30000).astype(int)
+low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 100000).astype(int)
 low_amount[AMOUNT.isna()] = 1
 
-low_p = (CLOSE < 5).astype(int)
+low_p = (CLOSE < 10).astype(int)
 low_p[CLOSE.isna()] = 1
 
-low_s = (s.rank(axis=1, pct=True) < 0.2).astype(int)
+low_s = (s.rank(axis=1, pct=True) < 0.382).astype(int)
 low_s[s.isna()] = 1
 
-low_cmc = (circ_mc.rank(axis=1, pct=True) < 0.2).astype(int)
+low_cmc = (circ_mc.rank(axis=1, pct=True) < 0.382).astype(int)
 low_cmc[circ_mc.isna()] = 1
 
-is_trade = yiziban + suspend + new + low_amount + low_p + low_s + low_cmc
+low_mc = (mc.rank(axis=1, pct=True) < 0.382).astype(int)
+low_mc[mc.isna()] = 1
+
+is_trade = yiziban + suspend + new + low_amount + low_p + low_s + low_cmc + low_mc
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 
@@ -133,12 +132,12 @@ def f(s):
     mc_ind_tmp_p = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(pct=True, ascending=False)
     mc_ind_tmp = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
     # print(mc_ind_tmp)
-    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=10) | (mc_ind_tmp_p.mc<=0.9)]
+    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=3) | (mc_ind_tmp_p.mc<=0.382)]
     # print(mc_ind_tmp)
     white_tmp = list(mc_ind_tmp.reset_index(-1).index)
     
     mc_tmp = mc.loc[trade_date, white_tmp].sort_values(ascending=False)
-    white = mc_tmp.index[:min(777, len(mc_tmp))]
+    white = mc_tmp.index[:min(168, len(mc_tmp))]
     ret = s.copy()
     ret.loc[:] = 0
     ret.loc[white] = 1

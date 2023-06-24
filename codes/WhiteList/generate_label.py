@@ -20,7 +20,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
-# start_date = '20100101'
+start_date = '20100101'
 
 start_date_sql = tools.trade_date_shift(start_date, 60)
 
@@ -53,7 +53,9 @@ HIGH = df.loc[:, 'high']
 LOW = df.loc[:, 'low']
 VOL = df.loc[:, 'vol']
 AMOUNT = df.loc[:, 'amount']
-lead = df.loc[:, ['mc', 'circ_mc', 's']].stack().groupby('trade_date').rank(pct=True).mean(1).unstack()
+mc = df.loc[:, 'mc']
+circ_mc = df.loc[:, 'circ_mc']
+s = df.loc[:, 's']
 ADJ = df.loc[:, 'adj_factor']
 suspend = df.loc[:, 'suspend_type']
 
@@ -91,16 +93,19 @@ new.fillna(method='ffill', limit=days_new, inplace=True)
 new = DataFrame(new, index=r_d.index, columns=r_d.columns)
 new.fillna(0, inplace=True)
 
-low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 100000).astype(int)
+low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 30000).astype(int)
 low_amount[AMOUNT.isna()] = 1
 
 low_p = (CLOSE < 5).astype(int)
 low_p[CLOSE.isna()] = 1
 
-low_lead = (lead.rank(axis=1, pct=True) < 0.8).astype(int)
-low_lead[lead.isna()] = 1
+low_s = (s.rank(axis=1, pct=True) < 0.2).astype(int)
+low_s[s.isna()] = 1
 
-is_trade = yiziban + suspend + new + low_amount + low_p + low_lead
+low_cmc = (circ_mc.rank(axis=1, pct=True) < 0.2).astype(int)
+low_cmc[circ_mc.isna()] = 1
+
+is_trade = yiziban + suspend + new + low_amount + low_p + low_s + low_cmc
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 
@@ -116,75 +121,39 @@ stock_ind_white = list(df_ind.stock_code)
 is_trade.loc[:, list(set(is_trade.columns).difference(set(stock_ind_white)))] = 1.0
 
 is_trade = 1 - is_trade
-is_trade = is_trade.loc[is_trade.index>=start_date]
-sql_f = """
-select t1.trade_date, t1.stock_code, 
-t1.factor_value beta, 
-t2.factor_value size, 
--t3.factor_value value
-from factor.tfactorbeta t1
-left join factor.tfactormc t2
-on t1.trade_date = t2.trade_date
-and t1.stock_code = t2.stock_code
-left join factor.tfactorbp t3
-on t1.trade_date = t3.trade_date
-and t1.stock_code = t3.stock_code
-where t1.trade_date >= {start_date}
-and t1.trade_date <= {end_date}
-""".format(start_date=start_date, end_date=end_date)
-df_f = pd.read_sql(sql_f, engine)
-df_f = df_f.set_index(['trade_date', 'stock_code']).groupby('trade_date').rank(pct=True)
-df_f.loc[:, 'score'] = df_f.mean(1)
-beta = df_f.loc[:, 'beta'].unstack()
-size = df_f.loc[:, 'size'].unstack()
-value = df_f.loc[:, 'value'].unstack()
-score = df_f.loc[:, 'score'].unstack()
 
-# def f(s):
-#     trade_date = s.name
-#     is_trade_tmp = list(s.index[s==1])
-#     score_tmp = score.loc[trade_date, is_trade_tmp].sort_values(ascending=False)
-    
-#     white = score_tmp.index[:min(168, len(score_tmp))]
-#     ret = s.copy()
-#     ret.loc[:] = 0
-#     ret.loc[white] = 1
-#     return ret
 stock_ind_s = df_ind.set_index('stock_code').l3_name
 
 def f(s):
     trade_date = s.name
-    is_trade_tmp = list(s.index[s==1])
-    stock_ind_s_tmp = stock_ind_s[is_trade_tmp]
-    score_tmp = score.loc[trade_date, is_trade_tmp]
-    score_ind_tmp = DataFrame({'score':score_tmp, 'ind':stock_ind_s_tmp})
-    score_ind_tmp_p = score_ind_tmp.set_index('ind', append=True).groupby('ind').rank(pct=True, ascending=False)
-    score_ind_tmp = score_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
+    white_tmp = list(s.index[s==1])
+    stock_ind_s_tmp = stock_ind_s[white_tmp]
+    mc_tmp = mc.loc[trade_date, white_tmp]
+    mc_ind_tmp = DataFrame({'mc':mc_tmp, 'ind':stock_ind_s_tmp})
+    mc_ind_tmp_p = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(pct=True, ascending=False)
+    mc_ind_tmp = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
     # print(mc_ind_tmp)
-    score_ind_tmp = score_ind_tmp.loc[(score_ind_tmp.score<=5) | (score_ind_tmp_p.score<=0.618)]
+    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=10) | (mc_ind_tmp_p.mc<=0.9)]
     # print(mc_ind_tmp)
-    is_white_tmp = list(score_ind_tmp.reset_index(-1).index)
+    white_tmp = list(mc_ind_tmp.reset_index(-1).index)
     
-    score_tmp = score.loc[trade_date, is_white_tmp].sort_values(ascending=False)
-    white = score_tmp.index[:min(168, len(score_tmp))]
+    mc_tmp = mc.loc[trade_date, white_tmp].sort_values(ascending=False)
+    white = mc_tmp.index[:min(777, len(mc_tmp))]
     ret = s.copy()
     ret.loc[:] = 0
     ret.loc[white] = 1
     return ret
 is_white = is_trade.apply(f, axis=1)
 
-df = pd.concat({
-    'is_trade':is_trade,
-    'is_white':is_white, 
-    'score':score,
-    'beta':beta, 
-    'size':size, 
-    'value':value
-    }, axis=1)
+df = pd.concat({'R_DAILY':r_d, 
+                'R_WEEKLY':r_w, 
+                'R_MONTHLY':r_m, 
+                'IS_TRADE':is_trade,
+                'IS_WHITE':is_white}, axis=1)
 df = df.loc[df.index>=start_date]
 df = df.stack()
 
 df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
 
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306")
-df.to_sql('tdailywhitelist', engine, schema='whitelist', index=True, if_exists='append', chunksize=10000, method=tools.mysql_replace_into)
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/label?charset=utf8")
+df.to_sql('tdailylabel', engine, schema='label', index=True, if_exists='append', chunksize=10000, method=tools.mysql_replace_into)

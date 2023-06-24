@@ -13,21 +13,24 @@ from sqlalchemy import create_engine
 import statsmodels.api as sm
 
 #%%
-start_date = '20120101'
+start_date = '20200101'
 end_date = '20230505'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql = """
-select tl.trade_date, tl.stock_code, tl.r_daily
+select tl.trade_date, tl.stock_code, tl.r_d
 from label.tdailylabel tl
 left join indsw.tindsw ti
 on tl.stock_code = ti.stock_code
+left join whitelist.tdailywhitelist tw
+on tl.stock_code = tw.stock_code
+and tl.trade_date = tw.trade_date
 where tl.trade_date >= {start_date}
 and tl.trade_date <= {end_date}
-and tl.is_white = 1
+and tw.is_white = 1
 and ti.l3_name in {white_ind}
 """.format(start_date=start_date, end_date=end_date, white_ind=tuple(gc.WHITE_INDUSTRY_LIST))
-y = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_daily.unstack()
+y = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
 #%%
 start_date_sql = tools.trade_date_shift(start_date, 250)
@@ -55,6 +58,7 @@ buy_sm_vol = df.set_index(['trade_date', 'stock_code']).loc[:, 'buy_sm_vol']
 sell_sm_vol = df.set_index(['trade_date', 'stock_code']).loc[:, 'sell_sm_vol']
 
 sm_vol_rate = (buy_sm_vol + sell_sm_vol) / v
+sm_net_vol_rate = (buy_sm_vol - sell_sm_vol) / v
 
 c = df.set_index(['trade_date', 'stock_code']).loc[:, 'close']
 
@@ -62,10 +66,12 @@ adj_factor = df.set_index(['trade_date', 'stock_code']).loc[:, 'adj_factor']
 
 r = np.log(c * adj_factor).groupby('stock_code').diff()
 r = r.unstack()
-s = np.log(sm_vol_rate.replace(-np.inf, np.nan).replace(np.inf, np.nan).replace(0, np.nan)).unstack()
+p = c.unstack()
+s = sm_vol_rate.unstack().rank(axis=1, pct=True)
+# s = sm_net_vol_rate.unstack().rank(axis=1, pct=True)
 #%%
 # x = tr60
 x = r.ewm(halflife=5).corr(s)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'crs')
+tools.factor_analyse(x_, y, 3, 'crsm')

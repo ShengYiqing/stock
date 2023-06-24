@@ -31,24 +31,21 @@ if __name__ == '__main__':
     factor_name = 'hfbeta'
     
     factors = [
-        'quality', 'expectation', 
-        'beta', 'pvcorr', 'wmdaily', 'str', 'hls', 'trd', 'sigmad'
-        'hftech', 
+        'hfbeta', 'hfcorrmarket', 
+        'hfsigma', 'hfskew', 'hfhl', 
+        'hfetr', 'hfttr', 'hfutr', 
+        'hfspread', 'hfimbalance', 
+        'hfpvcorr', 'hfrvcorr', 'hfpscorr', 'hfpicorr', 
+        'hfintradaymomentum', 
+        'hfcallauctionmomentum', 'hfbluff'
         ]
-    factors = ['cxx'
-               ]
-    
-    factors = ['beta', 'cxx', 'quality', 'hftech']
-    factors = ['reversal', 
-               'tr', 'sigma', 
-               'trd', 'sigmad', 
-               'str', 'hls', 
-               'skew', 
-               'corrmarket', 'beta', 
-               'operation', 
-               'gross', 'core', 'profitability', 'cash'
-               'growth', 'stability', 
-               'bp']
+    factors = [
+        'sigmad',
+        'beta', 
+        'crhl', 'crshl', 
+        'crv', 'crsv', 
+        'crsm',
+        ]
     for factor_name in factors:
         start_date = '20120101'
         end_date = '20230605'
