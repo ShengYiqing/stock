@@ -46,8 +46,9 @@ if __name__ == '__main__':
         'crv', 'crsv', 
         'crsm',
         ]
+    factors = ['tr']
     for factor_name in factors:
-        start_date = '20120101'
+        start_date = '20200101'
         end_date = '20230605'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)

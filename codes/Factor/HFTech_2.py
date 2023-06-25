@@ -41,7 +41,6 @@ def generate_factor(start_date, end_date):
         'hfcallauctionmomentum': 1, 'hfbluff': -1, 
         'hfcorrmarket': 1,  'hfbeta': 1, 
         'hfetr': 1, 'hfttr': 1, 'hfutr': -1, 
-        'hfpicorr': -1, 
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")

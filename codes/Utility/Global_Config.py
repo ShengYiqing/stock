@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 
 #路径名
 PROJECT_PATH = 'D:/stock'
+OUTPUT_PATH = PROJECT_PATH + '/Output'
 # GLOBALCONFIG_PATH = PROJECT_PATH + '/Codes'
 GLOBALCONFIG_PATH = PROJECT_PATH + '/Codes/Utility'
 DATABASE_PATH = PROJECT_PATH + '/DataBase'

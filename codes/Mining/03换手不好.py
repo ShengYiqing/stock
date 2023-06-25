@@ -33,25 +33,23 @@ n = 250
 start_date_sql = tools.trade_date_shift(start_date, n+1)
 
 sql = """
-select t1.trade_date, t1.stock_code, 
-t1.open, t1.high, t1.low, t1.close, 
-t2.adj_factor from tsdata.ttsdaily t1
-left join tsdata.ttsadjfactor t2
-on t1.stock_code = t2.stock_code
-and t1.trade_date = t2.trade_date
-where t1.trade_date >= {start_date}
-and t1.trade_date <= {end_date}
+select trade_date, stock_code, 
+turnover_rate from tsdata.ttsdailybasic
+where trade_date >= {start_date}
+and trade_date <= {end_date}
 """
 sql = sql.format(start_date=start_date_sql, end_date=end_date)
 df = pd.read_sql(sql, engine)
 
-c = df.set_index(['trade_date', 'stock_code']).loc[:, 'close']
+tr = df.set_index(['trade_date', 'stock_code']).loc[:, 'turnover_rate']
 
-adj_factor = df.set_index(['trade_date', 'stock_code']).loc[:, 'adj_factor']
-r = np.log(c * adj_factor).groupby('stock_code').diff()
+tr = np.log(tr).unstack()
 
-r = r.unstack()
-x = r.ewm(halflife=5).mean()
+trm = tr.ewm(halflife=5).mean()
+trs = tr.ewm(halflife=5).std()
+x = trm.rank(axis=1, pct=True) + trs.rank(axis=1, pct=True)
+
+
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 7, 'corrhlr')

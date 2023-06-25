@@ -62,30 +62,33 @@ def rolling_weight_sum(df_sum, df_weight, n, weight_type):
 
 def factor_analyse(x, y, num_group, factor_name):
     #因子分布
-    plt.figure(figsize=(16,12))
+    try:
+        os.mkdir('%s/Factor/%s'%(gc.OUTPUT_PATH, factor_name))
+    except:
+        pass
+    plt.figure(figsize=(16,9))
     plt.hist(x.values.flatten())
     plt.title(factor_name+'-hist')
-    # plt.savefig('%s/Results/%s/hist.png'%(gc.SINGLEFACTOR_PATH, self.factor_name))
+    plt.savefig('%s/Factor/%s/01hist.png'%(gc.OUTPUT_PATH, factor_name))
     
     IC = x.corrwith(y, axis=1)
-    IR = IC.rolling(20).mean() / IC.rolling(20).std()
+    IR = IC.rolling(250).mean() / IC.rolling(250).std()
     
-    plt.figure(figsize=(16,12))
+    plt.figure(figsize=(16,9))
     IC.cumsum().plot()
     plt.title(factor_name+'-ic')
-    # plt.savefig('%s/Results/%s/IC.png'%(gc.SINGLEFACTOR_PATH, self.factor_name))
+    plt.savefig('%s/Factor/%s/02ic.png'%(gc.OUTPUT_PATH, factor_name))
     
-    plt.figure(figsize=(16,12))
+    plt.figure(figsize=(16,9))
     IR.cumsum().plot()
     plt.title(factor_name+'-ir')
-    # plt.savefig('%s/Results/%s/IR.png'%(gc.SINGLEFACTOR_PATH, self.factor_name))
+    plt.savefig('%s/Factor/%s/03ir.png'%(gc.OUTPUT_PATH, factor_name))
     
     
-    plt.figure(figsize=(16,12))
+    plt.figure(figsize=(16,9))
     (IC**2).cumsum().plot()
     plt.title(factor_name+'-r2')
-    # plt.legend(['%s'%i for i in range(len(ys))])
-    # plt.savefig('%s/Results/%s/IC_abs.png'%(gc.SINGLEFACTOR_PATH, self.factor_name))
+    plt.savefig('%s/Factor/%s/04r2.png'%(gc.OUTPUT_PATH, factor_name))
         
         
     x_quantile = DataFrame(x.rank(axis=1, pct=True))
@@ -96,52 +99,54 @@ def factor_analyse(x, y, num_group, factor_name):
         group_pos[n][~group_pos[n]] = np.nan
         group_pos[n] = 1 * group_pos[n]
         
-    plt.figure(figsize=(16, 12))
+    plt.figure(figsize=(16, 9))
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
         group_mean[n].plot()
     plt.legend(['%s'%i for i in range(num_group)], loc="best")
+    plt.title(factor_name+'-cumprod')
+    plt.savefig('%s/Factor/%s/05cumprod.png'%(gc.OUTPUT_PATH, factor_name))
 
-    plt.figure(figsize=(16, 12))
+    plt.figure(figsize=(16, 9))
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = (group_pos[n] * y).mean(1).cumsum().rename('%s'%(n/num_group))
         group_mean[n].plot()
     plt.legend(['%s'%i for i in range(num_group)])
-    #plt.title(factor_name+'-group backtest')
-    # plt.savefig('%s/Results/%s/group_mean%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
-    
-    plt.figure(figsize=(16, 12))
+    plt.title(factor_name+'-cumsum')
+    plt.savefig('%s/Factor/%s/06cumsum.png'%(gc.OUTPUT_PATH, factor_name))
+
+    plt.figure(figsize=(16, 9))
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1) - 1*y.mean(1)).cumsum().rename('%s'%(n/num_group))
         group_mean[n].plot()
     plt.legend(['%s'%i for i in range(num_group)])
-    plt.title(factor_name+'-group alpha')
-    # plt.savefig('%s/Results/%s/group_mean%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
-    
-    plt.figure(figsize=(16, 12))
+    plt.title(factor_name+'-alpha')
+    plt.savefig('%s/Factor/%s/07alpha.png'%(gc.OUTPUT_PATH, factor_name))
+
+    plt.figure(figsize=(16, 9))
     group_hist = [group_mean[i].iloc[np.where(group_mean[i].notna())[0][-1]] for i in range(num_group)]
     plt.bar(range(num_group), group_hist)
-    plt.title(factor_name+'-group alpha')
-    # plt.savefig('%s/Results/%s/group_mean_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
-    
-    plt.figure(figsize=(16, 12))
+    plt.title(factor_name+'-alpha bar')
+    plt.savefig('%s/Factor/%s/08alpha_bar.png'%(gc.OUTPUT_PATH, factor_name))
+
+    plt.figure(figsize=(16, 9))
     group_std = {}
     for n in range(num_group):
         group_std[n] = (group_pos[n] * y).std(1).cumsum().rename('%s'%(n/num_group))
         group_std[n].plot()
     plt.legend(['%s'%i for i in range(num_group)])
-    plt.title(factor_name+'-group return std')
-    # plt.savefig('%s/Results/%s/group_std%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
-    
-    plt.figure(figsize=(16, 12))
+    plt.title(factor_name+'-std')
+    plt.savefig('%s/Factor/%s/09std.png'%(gc.OUTPUT_PATH, factor_name))
+
+    plt.figure(figsize=(16, 9))
     group_hist = [group_std[i].iloc[np.where(group_std[i].notna())[0][-1]] for i in range(num_group)]
     plt.bar(range(num_group), group_hist)
-    plt.title(factor_name+'-group return std')
-    # plt.savefig('%s/Results/%s/group_std_hist%s.png'%(gc.SINGLEFACTOR_PATH, self.factor_name, i))
-    
+    plt.title(factor_name+'-std bar')
+    plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
+
     
 def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
