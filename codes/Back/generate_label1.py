@@ -89,27 +89,66 @@ new.fillna(method='ffill', limit=days_new, inplace=True)
 new = DataFrame(new, index=r_d.index, columns=r_d.columns)
 new.fillna(0, inplace=True)
 
-is_trade = yiziban + suspend + new
+low_amount = (AMOUNT.rolling(250, min_periods=20).mean() < 100000).astype(int)
+low_amount[AMOUNT.isna()] = 1
 
+low_p = (CLOSE < 10).astype(int)
+low_p[CLOSE.isna()] = 1
+
+low_s = (s.rank(axis=1, pct=True) < 0.382).astype(int)
+low_s[s.isna()] = 1
+
+low_cmc = (circ_mc.rank(axis=1, pct=True) < 0.382).astype(int)
+low_cmc[circ_mc.isna()] = 1
+
+low_mc = (mc.rank(axis=1, pct=True) < 0.382).astype(int)
+low_mc[mc.isna()] = 1
+
+is_trade = yiziban + suspend + new + low_amount + low_p + low_s + low_cmc + low_mc
 is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
 
+sql_ind = """
+select stock_code, l3_name 
+from indsw.tindsw
+where l3_name in {l3}
+""".format(l3=tuple(gc.WHITE_INDUSTRY_LIST))
+
+df_ind = pd.read_sql(sql_ind, engine)
+stock_ind_white = list(df_ind.stock_code)
+
+is_trade.loc[:, list(set(is_trade.columns).difference(set(stock_ind_white)))] = 1.0
+
 is_trade = 1 - is_trade
-rank_amount = AMOUNT.rolling(250, min_periods=20).mean().rank(axis=1, pct=True)
-rank_price = CLOSE.rank(axis=1, pct=True)
-rank_revenue = s.rank(axis=1, pct=True)
-rank_cmc = circ_mc.rank(axis=1, pct=True)
-rank_mc = mc.rank(axis=1, pct=True)
+
+stock_ind_s = df_ind.set_index('stock_code').l3_name
+
+def f(s):
+    trade_date = s.name
+    white_tmp = list(s.index[s==1])
+    stock_ind_s_tmp = stock_ind_s[white_tmp]
+    mc_tmp = mc.loc[trade_date, white_tmp]
+    mc_ind_tmp = DataFrame({'mc':mc_tmp, 'ind':stock_ind_s_tmp})
+    mc_ind_tmp_p = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(pct=True, ascending=False)
+    mc_ind_tmp = mc_ind_tmp.set_index('ind', append=True).groupby('ind').rank(ascending=False)
+    # print(mc_ind_tmp)
+    mc_ind_tmp = mc_ind_tmp.loc[(mc_ind_tmp.mc<=3) | (mc_ind_tmp_p.mc<=0.382)]
+    # print(mc_ind_tmp)
+    white_tmp = list(mc_ind_tmp.reset_index(-1).index)
+    
+    mc_tmp = mc.loc[trade_date, white_tmp].sort_values(ascending=False)
+    white = mc_tmp.index[:min(168, len(mc_tmp))]
+    ret = s.copy()
+    ret.loc[:] = 0
+    ret.loc[white] = 1
+    return ret
+is_white = is_trade.apply(f, axis=1)
+
 df = pd.concat({'R_DAILY':r_d, 
                 'R_WEEKLY':r_w, 
                 'R_MONTHLY':r_m, 
                 'IS_TRADE':is_trade,
-                'rank_amount':rank_amount,
-                'rank_price':rank_price,
-                'rank_revenue':rank_revenue,
-                'rank_cmc':rank_cmc,
-                'rank_mc':rank_mc,
-                }, axis=1)
+                'IS_WHITE':is_white}, axis=1)
 df = df.loc[df.index>=start_date]
 df = df.stack()
 

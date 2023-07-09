@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230621'
+trade_date = '20230707'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688111', '600612', '688082'
+buy_list = ['688012', '601012', '688385', 
             ]
 
-sell_list= ['600132', '300418'
+sell_list= ['300033', '688111',
             ]
 
 position.extend(buy_list)
@@ -78,9 +78,9 @@ weight_s = 0.382
 lambda_i = 0.001
 
 factors = [
-    'quality', 
-    'cxx', 
     'beta', 
+    'reversal', 
+    'cxx', 
     'hftech', 
     ]
 
@@ -109,36 +109,36 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql_ic = """
 select trade_date, factor_name, 
-(ic_d+rank_ic_d)/2 as ic_d
+(ic_d+rank_ic_d)/2 as ic
 from tdailyic
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
 
 sql_h = """
 select trade_date, factor_name, 
-(h_d+rank_h_d)/2 as h_d
+(h_d+rank_h_d)/2 as h
 from tdailyh
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
 
 sql_tr = """
 select trade_date, factor_name, 
-(tr_d+rank_tr_d)/2 as tr_d
+(tr_d+rank_tr_d)/2 as tr
 from tdailytr
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_tr = sql_tr.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name']).loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
+df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name']).loc[:, 'tr'].unstack().loc[:, factors].fillna(method='ffill')
 
 ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
 # ic_mean_s = df_ic.rolling(seasonal_n_mean, min_periods=5).mean().fillna(0)
@@ -151,13 +151,13 @@ ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
 
 # ic_mean = (1 - weight_s) * ic_mean + weight_s * ic_mean_s
 
-ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=250).std().fillna(0)
+ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=60).std().fillna(0)
 
-ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=250).corr().fillna(0)
+ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=60).corr().fillna(0)
 
-h_mean = df_h.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+h_mean = df_h.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
 
-tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=250).mean().fillna(0)
+tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
 
 weight = DataFrame(0, index=trade_dates, columns=df_ic.columns)
 weight.index.name = 'trade_date'
@@ -168,7 +168,7 @@ for trade_date in trade_dates:
     ic_s = ic_std.loc[trade_date, :]
     
     h = h_mean.loc[trade_date, :] ** (1/4)
-    tr = tr_mean.loc[trade_date, :]
+    tr = np.exp(tr_mean.loc[trade_date, :])
     mat_ic_s_tune = np.diag(ic_s * h)
     
     mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)

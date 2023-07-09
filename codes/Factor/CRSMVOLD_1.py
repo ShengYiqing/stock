@@ -28,33 +28,38 @@ def generate_factor(start_date, end_date):
 
     sql = """
     select t1.trade_date, t1.stock_code, 
-    t1.open, t1.high, t1.low, t1.close, 
-    t1.amount, t2.adj_factor 
+    t1.close, t2.adj_factor, 
+    tmf.buy_sm_vol, tmf.sell_sm_vol,  
+    t1.vol
     from ttsdaily t1
     left join ttsadjfactor t2
     on t1.stock_code = t2.stock_code
     and t1.trade_date = t2.trade_date
+    left join ttsmoneyflow tmf
+    on t1.stock_code = tmf.stock_code
+    and t1.trade_date = tmf.trade_date
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    a = df.loc[:, 'amount']
     c = df.loc[:, 'close']
-    h = df.loc[:, 'high']
-    l = df.loc[:, 'low']
     af = df.loc[:, 'adj_factor']
-    a = a.unstack()
-    c = c * af
-    c = c.unstack()
-    v = a / c
-    v.replace(0, np.nan, inplace=True)
-    v = np.log(v)
-    c = np.log(c)
-    hl = np.log(h / l).unstack()
-    r = c.diff()
+    v = df.loc[:, 'vol']
+    buy_sm_vol = df.loc[:, 'buy_sm_vol']
+    sell_sm_vol = df.loc[:, 'sell_sm_vol']
 
-    df = r.ewm(halflife=5).corr(hl.shift())
+    sm_vol = ((buy_sm_vol + sell_sm_vol) / v).unstack()
+    sm_net = ((buy_sm_vol - sell_sm_vol) / v).unstack()
+
+    r = np.log(c * af).unstack().diff()
+    w = sm_vol.diff()
+    n = 20
+    df = r.ewm(halflife=n).corr(w)
+    df = df * r.ewm(halflife=n).std()
+    df = df / w.ewm(halflife=n).std()
+    df = df.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+    
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -64,7 +69,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrshl', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrsmvold', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

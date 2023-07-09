@@ -38,19 +38,15 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {
-        'cpv': -1, 
-        'cphl': -1,
+        'crhld': -1, 
         
-        'crp': -2, 
+        'crhl2c': -1,
+        'crhl2o': 1,
         
-        'crsm': 2, 
+        'crsmnet': 1, 
+        'crsmvold': 1, 
         
-        'crv': -1, 
-        'crhl': -1,
-        
-        'crsv': 1, 
-        'crshl': 1,
-        
+        'crtrd': -1,
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -64,7 +60,7 @@ def generate_factor(start_date, end_date):
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df = tools.neutralize(df)
+    # df = tools.neutralize(df)
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

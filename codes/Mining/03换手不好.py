@@ -44,11 +44,14 @@ df = pd.read_sql(sql, engine)
 tr = df.set_index(['trade_date', 'stock_code']).loc[:, 'turnover_rate']
 
 tr = np.log(tr).unstack()
+trd = tr.diff()
 
-trm = tr.ewm(halflife=5).mean()
-trs = tr.ewm(halflife=5).std()
-x = trm.rank(axis=1, pct=True) + trs.rank(axis=1, pct=True)
+tr_m = tr.ewm(halflife=5).mean()
+tr_s = tr.ewm(halflife=5).std()
 
+trd_s = trd.ewm(halflife=5).std()
+
+x = trd_s
 
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan

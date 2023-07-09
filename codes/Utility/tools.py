@@ -30,10 +30,10 @@ def colinearity_analysis(x1, x2, start_date, end_date):
     """.format(x1=x1, x2=x2, start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     df.dropna(inplace=True)
-    r2 = df.groupby('trade_date').apply(lambda x:x.corr(method='spearman').loc[x1, x2]**2).cumsum()
+    c = df.groupby('trade_date').apply(lambda x:x.corr(method='spearman').loc[x1, x2])
     plt.figure(figsize=(16, 9))
-    r2.plot()
-    return r2
+    (c**2).cumsum().plot()
+    return c
 
 def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     columns = sorted(set(list(df_sum.columns)).intersection(set(list(df_weight.columns))))
@@ -148,7 +148,7 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
 
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white=True, is_industry=True):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_dic={'amount': 0.382, 'price': 0.382, 'revenue': 0.382, 'cmc': 0.382, 'mc': 0.618}, is_industry=True):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     
     for factor_name in factor_names:
@@ -166,8 +166,8 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, is_white
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
         sql += " and t1.is_trade = 1 "
-    if is_white:
-        sql += " and t1.is_white = 1 "
+    for k in white_dic.keys():
+        sql += " and t1.rank_{k} >= {v} ".format(k=k, v=white_dic[k])
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql
@@ -245,7 +245,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc', 'bp', 'reversal', 'tr'], ind=None):
+def neutralize(data, factors=['mc', 'bp', 'reversal', 'tr'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

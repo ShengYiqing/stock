@@ -23,32 +23,36 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 60)
+    start_date_sql = tools.trade_date_shift(start_date, 20)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
-    
+
     sql = """
-    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t1.AMOUNT, t2.ADJ_FACTOR from ttsdaily t1
+    select t1.trade_date, t1.stock_code, 
+    t1.close, t2.adj_factor, t3.turnover_rate 
+    from ttsdaily t1
     left join ttsadjfactor t2
-    on t1.STOCK_CODE = t2.STOCK_CODE
-    and t1.TRADE_DATE = t2.TRADE_DATE
+    on t1.stock_code = t2.stock_code
+    and t1.trade_date = t2.trade_date
+    left join ttsdailybasic t3
+    on t1.stock_code = t3.stock_code
+    and t1.trade_date = t3.trade_date
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
-    df = pd.read_sql(sql, engine).set_index(['TRADE_DATE', 'STOCK_CODE'])
-    AMOUNT = df.loc[:, 'AMOUNT']
-    CLOSE = df.loc[:, 'CLOSE']
-    ADJ_FACTOR = df.loc[:, 'ADJ_FACTOR']
-    AMOUNT = AMOUNT.unstack()
-    CLOSE = CLOSE.unstack()
-    ADJ_FACTOR = ADJ_FACTOR.unstack()
-    CLOSE = CLOSE * ADJ_FACTOR
-    VOL = AMOUNT / CLOSE
-    VOL.replace(0, np.nan, inplace=True)
-    VOL = np.log(VOL)
-    CLOSE = np.log(CLOSE)
-    r = CLOSE.diff()
-    df = r.ewm(halflife=5).corr(VOL.shift())
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+    c = df.loc[:, 'close']
+    af = df.loc[:, 'adj_factor']
+    tr = df.loc[:, 'turnover_rate']
+    tr = np.log(tr).replace(-np.inf, np.nan).unstack()
+    r = np.log(c * af).unstack().diff()
+    w = tr.diff()
+    n = 20
+    df = r.ewm(halflife=n).corr(w)
+    df = df * r.ewm(halflife=n).std()
+    df = df / w.ewm(halflife=n).std()
+    df = df.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+    
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -58,7 +62,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrsv', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrtrd', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 import statsmodels.api as sm
 
 #%%
-start_date = '20160101'
+start_date = '20200101'
 end_date = '20230505'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -35,57 +35,55 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.open, t1.high, t1.low, t1.close, 
-t2.adj_factor 
+t1.close, t2.adj_factor, t3.turnover_rate 
 from ttsdaily t1
 left join ttsadjfactor t2
 on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
+left join ttsdailybasic t3
+on t1.stock_code = t3.stock_code
+and t1.trade_date = t3.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
 """
 sql = sql.format(start_date=start_date_sql, end_date=end_date)
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-o = df.loc[:, 'open']
 c = df.loc[:, 'close']
-h = df.loc[:, 'high']
-l = df.loc[:, 'low']
 af = df.loc[:, 'adj_factor']
+tr = df.loc[:, 'turnover_rate']
+tr = np.log(tr).replace(-np.inf, np.nan).unstack()
 r = np.log(c * af).unstack().diff()
-
-hl = (np.log(h) - np.log(l)).unstack()
-hl2o = (np.log(h) + np.log(l) - 2 * np.log(o)).unstack()
-hl2c = (np.log(h) + np.log(l) - 2 * np.log(c)).unstack()
-
-
 
 # hl = hl.rank(axis=1, pct=True)
 #%%
 # x = tr60
-n_list = [1, 5]
+n_list = [20]
 w_dic = {
-    'hl': hl, 
-    'hl2o': hl2o, 
-    'hl2c': hl2c, 
+    'tr': tr, 
     }
 # w_list = [hl, ho, lo, ch, cl, hla, hloc, hl2o, hl2c]
 for n in n_list:
     for w in w_dic.keys():
         x = r.ewm(halflife=n).corr(w_dic[w])
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s'%(w, n))
-
-for n in n_list:
-    for w in w_dic.keys():
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s'%(w, n))
+        
         x = r.ewm(halflife=n).corr(w_dic[w].shift())
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].shift().ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s_s'%(w, n))
-
-for n in n_list:
-    for w in w_dic.keys():
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s_s'%(w, n))
+        
         x = r.ewm(halflife=n).corr(w_dic[w].diff())
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].diff().ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s_d'%(w, n))
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s_d'%(w, n))

@@ -12,8 +12,8 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20120101'
-end_date = '20230605'
+start_date = '20230101'
+end_date = '20230705'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql = """
@@ -60,7 +60,10 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
+# x_1 = (r.ewm(halflife=1).corr(r_m) * r.ewm(halflife=1).std()).div(r_m.ewm(halflife=5).std(), axis=0)
+# x_2 = (r.ewm(halflife=20).corr(r_m) * r.ewm(halflife=20).std()).div(r_m.ewm(halflife=60).std(), axis=0)
 x = r.ewm(halflife=5).corr(r_m) * r.ewm(halflife=5).std()
+x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 21, 'corrhlr')
+tools.factor_analyse(x_, y, 7, 'corrhlr')

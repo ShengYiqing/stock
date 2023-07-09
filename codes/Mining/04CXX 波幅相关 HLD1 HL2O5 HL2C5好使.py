@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 import statsmodels.api as sm
 
 #%%
-start_date = '20160101'
+start_date = '20200101'
 end_date = '20230505'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -53,6 +53,7 @@ l = df.loc[:, 'low']
 af = df.loc[:, 'adj_factor']
 r = np.log(c * af).unstack().diff()
 
+oc = np.log(o * af).unstack() - np.log(c * af).unstack().shift()
 hl = (np.log(h) - np.log(l)).unstack()
 hl2o = (np.log(h) + np.log(l) - 2 * np.log(o)).unstack()
 hl2c = (np.log(h) + np.log(l) - 2 * np.log(c)).unstack()
@@ -62,30 +63,39 @@ hl2c = (np.log(h) + np.log(l) - 2 * np.log(c)).unstack()
 # hl = hl.rank(axis=1, pct=True)
 #%%
 # x = tr60
-n_list = [1, 5]
+n_list = [20,]
 w_dic = {
     'hl': hl, 
     'hl2o': hl2o, 
     'hl2c': hl2c, 
     }
+# w_dic = {
+#     'oc': oc,
+#     }
 # w_list = [hl, ho, lo, ch, cl, hla, hloc, hl2o, hl2c]
 for n in n_list:
     for w in w_dic.keys():
         x = r.ewm(halflife=n).corr(w_dic[w])
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s'%(w, n))
-
-for n in n_list:
-    for w in w_dic.keys():
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s'%(w, n))
+        
         x = r.ewm(halflife=n).corr(w_dic[w].shift())
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].shift().ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s_s'%(w, n))
-
-for n in n_list:
-    for w in w_dic.keys():
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s_s'%(w, n))
+        
         x = r.ewm(halflife=n).corr(w_dic[w].diff())
+        x = x * r.ewm(halflife=n).std()
+        x = x / w_dic[w].diff().ewm(halflife=n).std()
+        x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
         x_ = DataFrame(x, index=y.index, columns=y.columns)
         x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 7, 'cr%s_%s_d'%(w, n))
+        tools.factor_analyse(x_, y, 3, 'cr%s_%s_d'%(w, n))
+        

@@ -23,13 +23,13 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
     sql = """
     select t1.trade_date, t1.stock_code, 
     t1.open, t1.high, t1.low, t1.close, 
-    t1.amount, t2.adj_factor 
+    t2.adj_factor 
     from ttsdaily t1
     left join ttsadjfactor t2
     on t1.stock_code = t2.stock_code
@@ -39,22 +39,21 @@ def generate_factor(start_date, end_date):
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    a = df.loc[:, 'amount']
+    o = df.loc[:, 'open']
     c = df.loc[:, 'close']
     h = df.loc[:, 'high']
     l = df.loc[:, 'low']
     af = df.loc[:, 'adj_factor']
-    a = a.unstack()
-    c = c * af
-    c = c.unstack()
-    v = a / c
-    v.replace(0, np.nan, inplace=True)
-    v = np.log(v)
-    c = np.log(c)
-    hl = np.log(h / l).unstack()
-    r = c.diff()
+    r = np.log(c * af).unstack().diff()
 
-    df = r.ewm(halflife=20).corr(hl)
+    hl2o = (np.log(h) + np.log(l) - 2 * np.log(o)).unstack()
+    w = hl2o
+    n = 20
+    df = r.ewm(halflife=n).corr(w)
+    df = df * r.ewm(halflife=n).std()
+    df = df / w.ewm(halflife=n).std()
+    df = df.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+    
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -64,7 +63,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrhl', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrhl2o', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

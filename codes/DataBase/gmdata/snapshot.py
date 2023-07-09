@@ -13,9 +13,6 @@ import sys
 import os
 import multiprocessing as mp
 import pickle
-import Config
-
-sys.path.append(Config.GLOBALCONFIG_PATH)
 import Global_Config as gc
 import tools
 

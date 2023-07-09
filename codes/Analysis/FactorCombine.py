@@ -37,9 +37,9 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 
 factors = [
-    
-    'cxx', 
     'beta', 
+    'reversal', 
+    'cxx', 
     'hftech', 
     ]
 
@@ -51,7 +51,7 @@ for factor in factors:
         ic_sub[factor] = 0
 ic_sub = Series(ic_sub)
 
-start_date = '20220101'
+start_date = '20230101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -70,36 +70,36 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql_ic = """
 select trade_date, factor_name, 
-(ic_d+rank_ic_d)/2 as ic_d
+(ic_d+rank_ic_d)/2 as ic
 from tdailyic
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
 
 sql_h = """
 select trade_date, factor_name, 
-(h_d+rank_h_d)/2 as h_d
+(h_d+rank_h_d)/2 as h
 from tdailyh
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h_d'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
 
 sql_tr = """
 select trade_date, factor_name, 
-(tr_d+rank_tr_d)/2 as tr_d
+(tr_d+rank_tr_d)/2 as tr
 from tdailytr
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_tr = sql_tr.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name']).loc[:, 'tr_d'].unstack().loc[:, factors].fillna(method='ffill')
+df_tr = pd.read_sql(sql_tr, engine).set_index(['trade_date', 'factor_name']).loc[:, 'tr'].unstack().loc[:, factors].fillna(method='ffill')
 
 
 ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
@@ -118,7 +118,7 @@ ic_mean = df_ic.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
 ic_std = df_ic.ewm(halflife=halflife_cov, min_periods=60).std().fillna(0)
 
 ic_corr = df_ic.ewm(halflife=halflife_cov, min_periods=60).corr().fillna(0)
-
+ic_cov = df_ic.ewm(halflife=halflife_cov, min_periods=60).cov().fillna(0)
 h_mean = df_h.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
 
 tr_mean = df_tr.ewm(halflife=halflife_mean, min_periods=60).mean().fillna(0)
@@ -132,13 +132,21 @@ for trade_date in trade_dates:
     ic_s = ic_std.loc[trade_date, :]
     
     h = h_mean.loc[trade_date, :] ** (1/4)
-    tr = tr_mean.loc[trade_date, :]
+    tr = np.exp(tr_mean.loc[trade_date, :])
     mat_ic_s_tune = np.diag(ic_s * h)
     
     mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
     mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
     weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
+# for trade_date in trade_dates:
+#     mat_ic_cov = ic_cov.loc[trade_date, :]
+    
+#     mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
+    
+#     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
+    
+#     weight.loc[trade_date, :] = np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values)
 
 sql = tools.generate_sql_y_x(factors, start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -153,76 +161,113 @@ for factor in factors:
     df_x = tools.standardize(tools.winsorize(df_x))
     # df_x = df_x.rank(axis=1, pct=True)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
-# x = tools.neutralize(x, ['mc', 'bp', 'reversal', 'tr'])
+# x = tools.neutralize(x, ['mc', 'bp', 'reversal', 'tr'], ind='l3')
 #因子分布
-plt.figure(figsize=(16,12))
+plt.figure(figsize=(16,9))
 plt.hist(x.values.flatten())
 
 #IC
 IC = x.corrwith(y, axis=1)
-plt.figure(figsize=(16,12))
+plt.figure(figsize=(16,9))
 IC.cumsum().plot()
 
 #IR
 IR = IC.rolling(20).mean() / IC.rolling(20).std()
-plt.figure(figsize=(16,12))
+plt.figure(figsize=(16,9))
 IR.cumsum().plot()
 
 #R2
-plt.figure(figsize=(16,12))
+plt.figure(figsize=(16,9))
 (IC**2).cumsum().plot()
 
 #换手
-plt.figure(figsize=(16,12))
+plt.figure(figsize=(16,9))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 3
+num_group = 10
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
     group_pos[n][~group_pos[n]] = np.nan
     group_pos[n] = 1 * group_pos[n]
         
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
     group_mean[n].plot()
 plt.legend(['%s'%i for i in range(num_group)], loc="best")
 
-plt.figure(figsize=(16, 12))
+long = group_pos[n] * y
+short = group_pos[0] * y
+long_m = long.sum().sort_values(ascending=False).dropna()
+short_m = short.sum().sort_values().dropna()
+long_c = long.count()
+short_c = short.count()
+long_w = (long>0).sum() / long_c
+short_w = (short>0).sum() / short_c
+long_r = long.where(long>0).mean() / -long.where(long<0).mean()
+short_r = short.where(short>0).mean() / -short.where(short<0).mean()
+ls_c = long_c + short_c
+ls_m = long_m - short_m
+ls_w = long_w - short_w
+ls_r = long_r - short_r
+
+stock_names_sql = """
+select stock_code, name from tsdata.ttsstockbasic
+"""
+s_name = pd.read_sql(stock_names_sql, engine).set_index('stock_code').name
+df_ls = DataFrame(
+    {
+     '多空次数':ls_c, 
+     '多空收益':ls_m, 
+     '多空胜率':ls_w, 
+     '多空盈亏比':ls_r, 
+     '多头次数':long_c, 
+     '多头收益':long_m, 
+     '多头胜率':long_w, 
+     '多头盈亏比':long_r, 
+     '空头次数':short_c, 
+     '空头收益':short_m, 
+     '空头胜率':short_w, 
+     '空头盈亏比':short_r, 
+     })
+df_ls.loc[:, 'stock_name'] = [s_name[i] for i in df_ls.index]
+df_ls = df_ls.set_index('stock_name', append=True).sort_values('多空收益', ascending=False).dropna()
+
+plt.figure(figsize=(16, 9))
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = (group_pos[n] * y).mean(1).cumsum().rename('%s'%(n/num_group))
     group_mean[n].plot()
 plt.legend(['%s'%i for i in range(num_group)], loc="best")
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = ((group_pos[n] * y).mean(1) - 1*y.mean(1)).cumsum().rename('%s'%(n/num_group))
     group_mean[n].plot()
 plt.legend(['%s'%i for i in range(num_group)], loc="best")
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 group_hist = [group_mean[i].iloc[np.where(group_mean[i].notna())[0][-1]] for i in range(num_group)]
 plt.bar(range(num_group), group_hist)
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 group_std = {}
 for n in range(num_group):
     group_std[n] = (group_pos[n] * y).std(1).cumsum().rename('%s'%(n/num_group))
     group_std[n].plot()
 plt.legend(['%s'%i for i in range(num_group)], loc="best")
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 group_hist = [group_std[i].iloc[np.where(group_std[i].notna())[0][-1]] for i in range(num_group)]
 plt.bar(range(num_group), group_hist)
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(16, 9))
 for n in range(num_group):
-    (group_pos[n] * tools.winsorize(y)).stack().plot(kind='kde')
+    tools.winsorize((group_pos[n] * y).mean()).plot(kind='kde')
     plt.legend(['%s'%i for i in range(num_group)], loc="best")
 
 
