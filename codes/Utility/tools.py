@@ -148,7 +148,7 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
 
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_dic={'amount': 0.382, 'price': 0.382, 'revenue': 0.382, 'cmc': 0.382, 'mc': 0.618}, is_industry=True):
+def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_dic={'amount': 0.382, 'price': 0.382, 'revenue': 0.382, 'cmc': 0.382, 'mc': 0.9}, is_industry=True):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
     
     for factor_name in factor_names:
@@ -166,8 +166,10 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_di
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
         sql += " and t1.is_trade = 1 "
-    for k in white_dic.keys():
-        sql += " and t1.rank_{k} >= {v} ".format(k=k, v=white_dic[k])
+    
+    if white_dic:
+        for k in white_dic.keys():
+            sql += " and t1.rank_{k} >= {v} ".format(k=k, v=white_dic[k])
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     return sql

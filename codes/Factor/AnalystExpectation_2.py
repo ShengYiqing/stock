@@ -46,16 +46,18 @@ def generate_factor(start_date, end_date):
         'golden':1, 
         'goldend':1, 
         }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_white=False, is_trade=False, is_industry=False)
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
-    df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
+    df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()].dropna(axis=0, thresh=3)
+    
     df = df.groupby('trade_date').rank(pct=True)
     
     for factor in factor_dic.keys():
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.sum(1)
+    df = df.replace(0, np.nan).dropna()
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

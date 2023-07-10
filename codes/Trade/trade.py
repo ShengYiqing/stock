@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230707'
+trade_date = '20230710'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688012', '601012', '688385', 
+buy_list = ['002262', '300068', 
             ]
 
-sell_list= ['300033', '688111',
+sell_list= ['603529', '601012',
             ]
 
 position.extend(buy_list)
@@ -79,7 +79,12 @@ lambda_i = 0.001
 
 factors = [
     'beta', 
-    'reversal', 
+    # 'reversal', 
+    # 'tr', 
+    # 'mc', 
+    # 'bp',
+    'quality', 
+    # 'expectation', 
     'cxx', 
     'hftech', 
     ]

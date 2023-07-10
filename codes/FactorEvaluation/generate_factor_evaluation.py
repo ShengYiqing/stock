@@ -118,6 +118,11 @@ if __name__ == '__main__':
     factors = [
         'beta', 
         'reversal', 
+        'tr', 
+        'mc', 
+        'bp',
+        'quality', 
+        'expectation', 
         'cxx', 
         'hftech', 
         ]
