@@ -148,8 +148,8 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
 
     
-def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_dic={'amount': 0.382, 'price': 0.382, 'revenue': 0.382, 'cmc': 0.382, 'mc': 0.9}, is_industry=True):
-    sql = ' select t1.trade_date, t1.stock_code, t1.r_daily, t1.r_weekly, t1.r_monthly '
+def generate_sql_y_x(factor_names, start_date, end_date, label_type='a', is_trade=True, is_industry=True, white_dic={'amount': 0.2, 'price': 0.2, 'revenue': 0.2, 'cmc': 0.2, 'mc': 0.2}, n=300):
+    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, t1.rank_mc '.format(label_type=label_type)
     
     for factor_name in factor_names:
         sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)
@@ -172,6 +172,21 @@ def generate_sql_y_x(factor_names, start_date, end_date, is_trade=True, white_di
             sql += " and t1.rank_{k} >= {v} ".format(k=k, v=white_dic[k])
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
+    
+    if n:
+        sql = """
+        select t.* from 
+        (
+        select t.*, rank() over (
+            partition by trade_date 
+            order by rank_mc desc
+        ) my_rank
+        from 
+        ({sql}) t
+        ) t
+        where t.my_rank <= {n}
+        """.format(sql=sql, n=n)
+    
     return sql
 
 
@@ -247,7 +262,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc', 'bp', 'reversal', 'tr'], ind='l3'):
+def neutralize(data, factors=['mc', 'bp'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

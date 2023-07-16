@@ -270,8 +270,8 @@ if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
     # start_date = '20210101'
-    # end_date = '20230303'
-    # start_date = '20230303'
+    end_date = '20230714'
+    start_date = '20230714'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/mindata?charset=utf8")
     
     sql_tmp = """

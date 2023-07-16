@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230710'
+trade_date = '20230714'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['002262', '300068', 
+buy_list = ['688063', '600600', '300763'
             ]
 
-sell_list= ['603529', '601012',
+sell_list= ['600271', '605358', '300068', '002262'
             ]
 
 position.extend(buy_list)
@@ -121,7 +121,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift().fillna(method='ffill')
 
 sql_h = """
 select trade_date, factor_name, 
@@ -132,7 +132,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift().fillna(method='ffill')
 
 sql_tr = """
 select trade_date, factor_name, 
@@ -189,7 +189,7 @@ df.loc[:, 'mc'] = tools.standardize(tools.winsorize(df.loc[:, 'mc']))
 df.loc[:, 'bp'] = tools.standardize(tools.winsorize(df.loc[:, 'bp']))
 for factor in factors:
     df.loc[:, factor] = tools.standardize(tools.winsorize(df.loc[:, factor]))
-y = df.loc[:, 'r_daily'].unstack()
+y = df.loc[:, 'r_d'].unstack()
 
 x = DataFrame(dtype='float64')
 for factor in factors:

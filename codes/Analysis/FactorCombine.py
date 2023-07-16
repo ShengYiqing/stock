@@ -82,7 +82,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_ic = sql_ic.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_ic = pd.read_sql(sql_ic, engine).set_index(['trade_date', 'factor_name']).loc[:, 'ic'].unstack().loc[:, factors].shift(1).fillna(method='ffill')
 
 sql_h = """
 select trade_date, factor_name, 
@@ -93,7 +93,7 @@ and trade_date >= {start_date}
 and trade_date <= {end_date}
 """
 sql_h = sql_h.format(factor_names='(\''+'\',\''.join(factors)+'\')', start_date=start_date_ic, end_date=end_date)
-df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift(2).fillna(method='ffill')
+df_h = pd.read_sql(sql_h, engine).set_index(['trade_date', 'factor_name']).loc[:, 'h'].unstack().loc[:, factors].shift(1).fillna(method='ffill')
 
 sql_tr = """
 select trade_date, factor_name, 
@@ -158,7 +158,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 
-y = df.loc[:, 'r_daily'].unstack()
+y = df.loc[:, 'r_d'].unstack()
 
 x = DataFrame(dtype='float64')
 for factor in factors:
@@ -190,19 +190,20 @@ plt.figure(figsize=(16,9))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 5
+num_group = 7
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
     group_pos[n][~group_pos[n]] = np.nan
     group_pos[n] = 1 * group_pos[n]
-        
-plt.figure(figsize=(16, 9))
+
+
+from matplotlib import cm
+
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
-    group_mean[n].plot()
-plt.legend(['%s'%i for i in range(num_group)], loc="best")
+DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm')
 
 long = group_pos[n] * y
 short = group_pos[0] * y
@@ -241,39 +242,36 @@ df_ls = DataFrame(
 df_ls.loc[:, 'stock_name'] = [s_name[i] for i in df_ls.index]
 df_ls = df_ls.set_index('stock_name', append=True).sort_values('多空收益', ascending=False).dropna()
 
-plt.figure(figsize=(16, 9))
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = (group_pos[n] * y).mean(1).cumsum().rename('%s'%(n/num_group))
-    group_mean[n].plot()
-plt.legend(['%s'%i for i in range(num_group)], loc="best")
+DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm')
 
-plt.figure(figsize=(16, 9))
+
 group_mean = {}
 for n in range(num_group):
     group_mean[n] = ((group_pos[n] * y).mean(1) - 1*y.mean(1)).cumsum().rename('%s'%(n/num_group))
-    group_mean[n].plot()
-plt.legend(['%s'%i for i in range(num_group)], loc="best")
+DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm')
 
 plt.figure(figsize=(16, 9))
 group_hist = [group_mean[i].iloc[np.where(group_mean[i].notna())[0][-1]] for i in range(num_group)]
 plt.bar(range(num_group), group_hist)
 
-plt.figure(figsize=(16, 9))
 group_std = {}
 for n in range(num_group):
     group_std[n] = (group_pos[n] * y).std(1).cumsum().rename('%s'%(n/num_group))
-    group_std[n].plot()
-plt.legend(['%s'%i for i in range(num_group)], loc="best")
+DataFrame(group_std).plot(figsize=(16, 9), cmap='coolwarm')
+
 
 plt.figure(figsize=(16, 9))
 group_hist = [group_std[i].iloc[np.where(group_std[i].notna())[0][-1]] for i in range(num_group)]
 plt.bar(range(num_group), group_hist)
 
-plt.figure(figsize=(16, 9))
+group_r = {}
 for n in range(num_group):
-    tools.winsorize((group_pos[n] * y).mean()).plot(kind='kde')
-    plt.legend(['%s'%i for i in range(num_group)], loc="best")
+    group_r[n] = (group_pos[n] * y).mean(1)
+DataFrame(group_r).plot(kind='kde', figsize=(16, 9), cmap='coolwarm')
+
 
 
 if __name__ == '__main__':

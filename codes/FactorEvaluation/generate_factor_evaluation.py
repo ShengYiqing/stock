@@ -21,9 +21,9 @@ from sqlalchemy import create_engine
 import multiprocessing as mp
 
 def f(factor_name, df, start_date, end_date):
-    y_d = tools.standardize(tools.winsorize(df.loc[:, 'r_daily'].unstack()))
-    y_w = tools.standardize(tools.winsorize(df.loc[:, 'r_weekly'].unstack()))
-    y_m = tools.standardize(tools.winsorize(df.loc[:, 'r_monthly'].unstack()))
+    y_d = tools.standardize(tools.winsorize(df.loc[:, 'r_d'].unstack()))
+    y_w = tools.standardize(tools.winsorize(df.loc[:, 'r_w'].unstack()))
+    y_m = tools.standardize(tools.winsorize(df.loc[:, 'r_m'].unstack()))
     x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
     
     ic_d = x.corrwith(y_d, axis=1)
@@ -127,11 +127,11 @@ if __name__ == '__main__':
         'hftech', 
         ]
     
-    sql = tools.generate_sql_y_x(factors, start_date, end_date)
+    sql = tools.generate_sql_y_x(factors, start_date, end_date, label_type='c')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     pool = mp.Pool(4)
     for factor in factors:
-        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_daily', 'r_weekly', 'r_monthly', factor]], start_date, end_date))
+        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_d', 'r_w', 'r_m', factor]], start_date, end_date))
     pool.close()
     pool.join()

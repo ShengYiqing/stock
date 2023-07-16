@@ -37,7 +37,5 @@ for i in range(iters):
 
         df.loc[:, 'REC_CREATOR'] = 'ts'
         df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-        df.loc[:, 'REC_REVISOR'] = 'ts'
-        df.loc[:, 'REC_REVISE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-        
+
         df.to_sql('ttsstkmanagers', engine, schema='tsdata', index=False, if_exists='append', method=tools.mysql_replace_into)

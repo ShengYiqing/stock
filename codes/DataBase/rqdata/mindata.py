@@ -12,13 +12,13 @@ from sqlalchemy import create_engine
 
 if __name__ == '__main__':
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/rqdata?charset=utf8")
-     
+    
     rqdatac.init()
-    end_date = (datetime.datetime.today() + datetime.timedelta(30)).strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
+    end_date = datetime.datetime.today().strftime('%Y%m%d')
+    start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
     today = datetime.datetime.today().strftime('%Y%m%d')
     # df_all_instrument = rqdatac.all_instruments(type='Future', market='cn', date=None)
-    df_all_instrument = rqdatac.all_instruments(type='CS')
+    df_min = rqdatac.get_price(order_book_ids='000001.XSHE', start_date=start_date, end_date=end_date, frequency='1m')
     
     df_all_instrument.loc[:, 'listed_date'] = [str(s).replace('-', '') for s in df_all_instrument.loc[:, 'listed_date']]
     df_all_instrument.loc[:, 'de_listed_date'] = [str(s).replace('-', '') for s in df_all_instrument.loc[:, 'de_listed_date']]

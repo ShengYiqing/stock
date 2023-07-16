@@ -39,14 +39,13 @@ def generate_factor(start_date, end_date):
         pass
     factor_dic = {
         'crhld': -1, 
+        'crtrd': -1,
         
         'crhl2c': -1,
         'crhl2o': 1,
         
-        'crsmnet': 1, 
         'crsmvold': 1, 
         
-        'crtrd': -1,
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")

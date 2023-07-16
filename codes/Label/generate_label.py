@@ -44,6 +44,7 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 
 df = pd.read_sql(sql, engine)
 df = df.set_index(['trade_date', 'stock_code']).unstack()
+OPEN = df.loc[:, 'open']
 CLOSE = df.loc[:, 'close']
 HIGH = df.loc[:, 'high']
 LOW = df.loc[:, 'low']
@@ -58,10 +59,20 @@ suspend = df.loc[:, 'suspend_type']
 AVG = AMOUNT / VOL
 
 AVG_hfq = np.log(AVG * ADJ)
+open_hfq = np.log(OPEN * ADJ)
+close_hfq = np.log(CLOSE * ADJ)
 
-r_d = AVG_hfq.shift(-2) - AVG_hfq.shift(-1)
-r_w = AVG_hfq.shift(-6) - AVG_hfq.shift(-1)
-r_m = AVG_hfq.shift(-21) - AVG_hfq.shift(-1)
+r_d_a = AVG_hfq.shift(-2) - AVG_hfq.shift(-1)
+r_w_a = AVG_hfq.shift(-6) - AVG_hfq.shift(-1)
+r_m_a = AVG_hfq.shift(-21) - AVG_hfq.shift(-1)
+
+r_d_o = open_hfq.shift(-2) - open_hfq.shift(-1)
+r_w_o = open_hfq.shift(-6) - open_hfq.shift(-1)
+r_m_o = open_hfq.shift(-21) - open_hfq.shift(-1)
+
+r_d_c = close_hfq.shift(-1) - close_hfq
+r_w_c = close_hfq.shift(-5) - close_hfq
+r_m_c = close_hfq.shift(-20) - close_hfq
 
 yiziban = (HIGH == LOW).astype(int)
 yiziban = yiziban.shift(-1)
@@ -86,7 +97,7 @@ new = DataFrame(df_new.loc[:, 'a'], index=trade_dates_new)
 new.fillna(method='bfill', inplace=True)
 new.fillna(method='ffill', limit=days_new, inplace=True)
 
-new = DataFrame(new, index=r_d.index, columns=r_d.columns)
+new = DataFrame(new, index=r_d_a.index, columns=r_d_a.columns)
 new.fillna(0, inplace=True)
 
 is_trade = yiziban + suspend + new
@@ -100,10 +111,16 @@ rank_price = CLOSE.rank(axis=1, pct=True)
 rank_revenue = s.rank(axis=1, pct=True)
 rank_cmc = circ_mc.rank(axis=1, pct=True)
 rank_mc = mc.rank(axis=1, pct=True)
-df = pd.concat({'R_DAILY':r_d, 
-                'R_WEEKLY':r_w, 
-                'R_MONTHLY':r_m, 
-                'IS_TRADE':is_trade,
+df = pd.concat({'r_d_a':r_d_a, 
+                'r_w_a':r_w_a, 
+                'r_m_a':r_m_a, 
+                'r_d_o':r_d_o, 
+                'r_w_o':r_w_o, 
+                'r_m_o':r_m_o, 
+                'r_d_c':r_d_c, 
+                'r_w_c':r_w_c, 
+                'r_m_c':r_m_c, 
+                'is_trade':is_trade,
                 'rank_amount':rank_amount,
                 'rank_price':rank_price,
                 'rank_revenue':rank_revenue,

@@ -12,7 +12,7 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
+start_date = '20210101'
 end_date = '20230705'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -36,32 +36,27 @@ y_c = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_d_c.uns
 y_c_s = y_c.shift(-1)
 stock_codes = list(y_a.columns)
 #%%
-n = 250
-start_date_sql = tools.trade_date_shift(start_date, n+1)
+start_date_sql = tools.trade_date_shift(start_date, 250)
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
+factor_dic = {
+    'hfcallauctionmomentum': 1, 'hfbluff': -1, 
+    'hfcorrmarket': 1,  'hfbeta': 1, 
+    'hfetr': 1, 'hfttr': 1, 'hfutr': -1, 
+    }
+sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False)
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql = """
-select t1.trade_date, t1.stock_code, 
-t1.open, t1.high, t1.low, t1.close, 
-t2.adj_factor from tsdata.ttsdaily t1
-left join tsdata.ttsadjfactor t2
-on t1.stock_code = t2.stock_code
-and t1.trade_date = t2.trade_date
-where t1.trade_date >= {start_date}
-and t1.trade_date <= {end_date}
-"""
-sql = sql.format(start_date=start_date_sql, end_date=end_date)
 df = pd.read_sql(sql, engine)
-
-c = df.set_index(['trade_date', 'stock_code']).loc[:, 'close']
-
-adj_factor = df.set_index(['trade_date', 'stock_code']).loc[:, 'adj_factor']
-r = np.log(c * adj_factor).groupby('stock_code').diff()
-
-r = r.unstack()
-x = r.ewm(halflife=20).mean()
-x_ = DataFrame(x, index=y_a.index, columns=y_a.columns)
+df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
+df = df.groupby('trade_date').rank(pct=True)
+for factor in factor_dic.keys():
+    df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
+df = df.mean(1)
+df = df.unstack()
+df.index.name = 'trade_date'
+df.columns.name = 'stock_code'
+x_ = df
+x_ = tools.neutralize(df, factors=['mc', 'bp'])
+x_ = DataFrame(x_, index=y_a.index, columns=y_a.columns)
 x_[y_a.isna()] = np.nan
-tools.factor_analyse(x_, y_a, 7, 'ya')
-# tools.factor_analyse(x_, y_o, 7, 'yo')
-# tools.factor_analyse(x_, y_c, 7, 'yc')
-# tools.factor_analyse(x_, y_c_s, 7, 'ycs')
+tools.factor_analyse(x_, y_a, 7, 'cxx')

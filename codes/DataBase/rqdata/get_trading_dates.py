@@ -2,8 +2,6 @@ import os
 import sys
 import time
 import datetime
-import config
-sys.path.append(config.DIR_GC)
 import Global_Config as gc
 import tools
 import numpy as np
@@ -13,8 +11,8 @@ import rqdatac
 from sqlalchemy import create_engine
 
 if __name__ == '__main__':
-    engine = create_engine("mysql+pymysql://root:chenYiYi0517@127.0.0.1:3306/rqdata?charset=utf8")
-     
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/rqdata?charset=utf8")
+    
     rqdatac.init()
     end_date = (datetime.datetime.today() + datetime.timedelta(30)).strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')

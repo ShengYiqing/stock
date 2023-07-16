@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
-# end_date = '20230529'
+# end_date = '20230714'
 start_date = end_date
 # start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 
