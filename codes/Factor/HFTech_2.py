@@ -42,7 +42,7 @@ def generate_factor(start_date, end_date):
         'hfcorrmarket': 1,  'hfbeta': 1, 
         'hfetr': 1, 'hfttr': 1, 'hfutr': -1, 
         }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False)
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False, n=None)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
@@ -54,7 +54,7 @@ def generate_factor(start_date, end_date):
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df = tools.neutralize(df)
+    # df = tools.neutralize(df)
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")

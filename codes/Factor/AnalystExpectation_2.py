@@ -46,7 +46,7 @@ def generate_factor(start_date, end_date):
         'golden':1, 
         'goldend':1, 
         }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False)
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False, n=None)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
@@ -71,5 +71,5 @@ def generate_factor(start_date, end_date):
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-    start_date = '20100101'
+    # start_date = '20100101'
     generate_factor(start_date, end_date)

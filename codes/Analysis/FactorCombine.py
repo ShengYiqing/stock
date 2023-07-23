@@ -41,22 +41,31 @@ factors = [
     # 'reversal', 
     # 'tr', 
     # 'mc', 
-    # 'bp',
+    # 'bp', 
     'quality', 
     # 'expectation', 
     'cxx', 
     'hftech', 
     ]
 
-ic_sub = {'mc':0.01, 'bp':0.01}
-# ic_sub = {}
-
+weight_sub = {
+    'beta':0.03, 
+    # 'reversal': -0.01, 
+    # 'tr': -0.01, 
+    # 'mc': -0.01, 
+    # 'bp': 0.01, 
+    'quality':0.02, 
+    # 'expectation': 0.02, 
+    'cxx': 0.01, 
+    'hftech': 0.01
+    }
+# weight_sub = {}
 for factor in factors:
-    if factor not in ic_sub.keys():
-        ic_sub[factor] = 0
-ic_sub = Series(ic_sub)
+    if factor not in weight_sub.keys():
+        weight_sub[factor] = 0
+weight_sub = Series(weight_sub)
 
-start_date = '20220101'
+start_date = '20180101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -65,7 +74,7 @@ else:
 # end_date = '20230302'
 
 print('factors: ', factors)
-print('ic_sub: ', ic_sub)
+print('weight_sub: ', weight_sub)
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 start_date_ic = tools.trade_date_shift(start_date, 1500)
@@ -143,7 +152,7 @@ for trade_date in trade_dates:
     mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
     mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-    weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
+    weight.loc[trade_date, :] = (np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values) + weight_sub) / 2
 # for trade_date in trade_dates:
 #     mat_ic_cov = ic_cov.loc[trade_date, :]
     
@@ -239,7 +248,7 @@ df_ls = DataFrame(
      '空头胜率':short_w, 
      '空头盈亏比':short_r, 
      })
-df_ls.loc[:, 'stock_name'] = [s_name[i] for i in df_ls.index]
+df_ls.loc[:, 'stock_name'] = [s_name[i] if i in s_name.index else i for i in df_ls.index]
 df_ls = df_ls.set_index('stock_name', append=True).sort_values('多空收益', ascending=False).dropna()
 
 group_mean = {}

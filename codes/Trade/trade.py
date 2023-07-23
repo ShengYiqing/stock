@@ -42,15 +42,15 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230714'
+trade_date = '20230721'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688063', '600600', '300763'
+buy_list = ['688777', '688041'
             ]
 
-sell_list= ['600271', '605358', '300068', '002262'
+sell_list= ['300059', '600132'
             ]
 
 position.extend(buy_list)
@@ -89,13 +89,17 @@ factors = [
     'hftech', 
     ]
 
-ic_sub = {'mc':0.01, 'bp':0.01}
-ic_sub = {}
+weight_sub = {
+    'beta':0.03, 
+    'quality':0.02, 
+    # 'expectation': 0.02, 
+    'cxx': 0.01, 
+    'hftech': 0.01}
 
 for factor in factors:
-    if factor not in ic_sub.keys():
-        ic_sub[factor] = 0
-ic_sub = Series(ic_sub)
+    if factor not in weight_sub.keys():
+        weight_sub[factor] = 0
+weight_sub = Series(weight_sub)
 
 end_date = trade_date
 start_date = trade_date
@@ -106,7 +110,7 @@ print('----参数----')
 print('halflife_mean: ', halflife_mean)
 print('halflife_cov: ', halflife_cov)
 print('factors: ', factors)
-print('ic_sub: ', ic_sub)
+print('weight_sub: ', weight_sub)
 print('lambda_i: ', lambda_i)
 
 #读ic
@@ -179,7 +183,7 @@ for trade_date in trade_dates:
     mat_ic_cov = mat_ic_s_tune.dot(mat_ic_corr_tune).dot(mat_ic_s_tune)
     mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-    weight.loc[trade_date, :] = np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values)
+    weight.loc[trade_date, :] = (np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values) + weight_sub) / 2
 
 sql = tools.generate_sql_y_x(factors + ['mc', 'bp'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
