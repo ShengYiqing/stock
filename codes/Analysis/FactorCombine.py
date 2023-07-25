@@ -42,7 +42,7 @@ factors = [
     # 'tr', 
     # 'mc', 
     # 'bp', 
-    'quality', 
+    # 'quality', 
     # 'expectation', 
     'cxx', 
     'hftech', 
@@ -54,7 +54,7 @@ weight_sub = {
     # 'tr': -0.01, 
     # 'mc': -0.01, 
     # 'bp': 0.01, 
-    'quality':0.02, 
+    # 'quality':0.02, 
     # 'expectation': 0.02, 
     'cxx': 0.01, 
     'hftech': 0.01
@@ -199,7 +199,7 @@ plt.figure(figsize=(16,9))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
 x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 7
+num_group = 21
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
