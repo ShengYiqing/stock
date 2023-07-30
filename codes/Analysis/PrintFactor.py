@@ -29,7 +29,7 @@ if __name__ == '__main__':
     
     sql = """
     select 
-    tl.is_trade, tl.is_white, 
+    tl.is_trade, tl.rank_mc,
     tind.l1_name, tind.l2_name, tind.l3_name, 
     tmc.stock_code, tsb.name, 
     tmc.factor_value mc

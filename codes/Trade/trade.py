@@ -42,7 +42,7 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230725'
+trade_date = '20220707'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -55,8 +55,9 @@ sell_list= [
 
 position.extend(buy_list)
 position = list(set(position) - set(sell_list))
-# position = ['688385', '002236', '300413', '688599', '002568', 
-#             '600588', '601888', '688041']
+position = ['688041', '000661', '688187', '601888', '300450', 
+            '600893', '002568', '300418', '002236', '600588', 
+            '688599', '300413', '688385']
 with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
     pickle.dump(position, f)
 

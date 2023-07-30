@@ -16,25 +16,10 @@ start_date = '20180101'
 end_date = '20230705'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql = """
-select tl.trade_date, tl.stock_code, tl.r_d_a, tl.r_d_o, tl.r_d_c 
-from label.tdailylabel tl
-left join indsw.tindsw ti
-on tl.stock_code = ti.stock_code
-where tl.trade_date >= {start_date}
-and tl.trade_date <= {end_date}
-and tl.rank_mc > 0.9
-and tl.rank_cmc > 0.382
-and tl.rank_amount > 0.382
-and tl.rank_price > 0.382
-and tl.rank_revenue > 0.382
-and ti.l3_name in {white_ind}
-""".format(start_date=start_date, end_date=end_date, white_ind=tuple(gc.WHITE_INDUSTRY_LIST))
-y_a = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_d_a.unstack()
-y_o = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_d_o.unstack()
-y_c = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code']).r_d_c.unstack()
-y_c_s = y_c.shift(-1)
-stock_codes = list(y_a.columns)
+sql_y = tools.generate_sql_y_x([], start_date, end_date)
+df_y = pd.read_sql(sql_y, engine)
+y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
+stock_codes = list(y.columns)
 #%%
 n = 250
 start_date_sql = tools.trade_date_shift(start_date, n+1)
@@ -59,9 +44,6 @@ r = np.log(c * adj_factor).groupby('stock_code').diff()
 
 r = r.unstack()
 x = r.ewm(halflife=20).mean()
-x_ = DataFrame(x, index=y_a.index, columns=y_a.columns)
-x_[y_a.isna()] = np.nan
-tools.factor_analyse(x_, y_a, 7, 'ya')
-# tools.factor_analyse(x_, y_o, 7, 'yo')
-# tools.factor_analyse(x_, y_c, 7, 'yc')
-# tools.factor_analyse(x_, y_c_s, 7, 'ycs')
+x_ = DataFrame(x, index=y.index, columns=y.columns)
+x_[y.isna()] = np.nan
+tools.factor_analyse(x_, y, 7, 'ya')

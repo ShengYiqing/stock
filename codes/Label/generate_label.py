@@ -18,7 +18,7 @@ end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
 # start_date = '20100101'
 
-start_date_sql = tools.trade_date_shift(start_date, 60)
+start_date_sql = tools.trade_date_shift(start_date, 250)
 
 sql = """
 select t1.stock_code, t1.trade_date, 
@@ -111,6 +111,24 @@ rank_price = CLOSE.rank(axis=1, pct=True)
 rank_revenue = s.rank(axis=1, pct=True)
 rank_cmc = circ_mc.rank(axis=1, pct=True)
 rank_mc = mc.rank(axis=1, pct=True)
+
+
+sql = """
+select trade_date, close from ttsindexdaily
+where trade_date >= {start_date}
+and trade_date <= {end_date}
+"""
+sql = sql.format(start_date=start_date_sql, end_date=end_date)
+close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
+r_m = np.log(close_m).diff()
+
+r = close_hfq.diff()
+beta = r.ewm(halflife=20).corr(r_m) * r.ewm(halflife=20).std()
+
+beta.replace(np.inf, np.nan, inplace=True)
+beta.replace(-np.inf, np.nan, inplace=True)
+rank_beta = beta.rank(axis=1, pct=True)
+
 df = pd.concat({'r_d_a':r_d_a, 
                 'r_w_a':r_w_a, 
                 'r_m_a':r_m_a, 
@@ -126,6 +144,7 @@ df = pd.concat({'r_d_a':r_d_a,
                 'rank_revenue':rank_revenue,
                 'rank_cmc':rank_cmc,
                 'rank_mc':rank_mc,
+                'rank_beta':rank_beta,
                 }, axis=1)
 df = df.loc[df.index>=start_date]
 df = df.stack()

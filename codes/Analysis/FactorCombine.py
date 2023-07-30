@@ -38,7 +38,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 factors = [
     'beta', 
-    # 'reversal', 
+    'reversal', 
     # 'tr', 
     # 'mc', 
     # 'bp', 
@@ -50,7 +50,7 @@ factors = [
 
 weight_sub = {
     'beta':0.03, 
-    # 'reversal': -0.01, 
+    'reversal': -0.01, 
     # 'tr': -0.01, 
     # 'mc': -0.01, 
     # 'bp': 0.01, 
@@ -65,7 +65,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20180101'
+start_date = '20180701'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
