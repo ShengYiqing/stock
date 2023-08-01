@@ -42,7 +42,7 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20220707'
+trade_date = '20230801'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -82,10 +82,10 @@ lambda_i = 0.001
 
 factors = [
     'beta', 
-    # 'reversal', 
+    'reversal', 
     # 'tr', 
     # 'mc', 
-    # 'bp',
+    # 'bp', 
     # 'quality', 
     # 'expectation', 
     'cxx', 
@@ -93,11 +93,16 @@ factors = [
     ]
 
 weight_sub = {
-    'beta':0.03, 
+    'beta':0.01, 
+    'reversal': -0.01, 
+    # 'tr': -0.01, 
+    # 'mc': -0.01, 
+    # 'bp': 0.01, 
     # 'quality':0.02, 
     # 'expectation': 0.02, 
     'cxx': 0.01, 
-    'hftech': 0.01}
+    'hftech': 0.01
+    }
 
 for factor in factors:
     if factor not in weight_sub.keys():

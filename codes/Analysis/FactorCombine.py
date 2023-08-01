@@ -49,7 +49,7 @@ factors = [
     ]
 
 weight_sub = {
-    'beta':0.03, 
+    'beta':0.01, 
     'reversal': -0.01, 
     # 'tr': -0.01, 
     # 'mc': -0.01, 

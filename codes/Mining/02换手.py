@@ -37,8 +37,7 @@ tr = df.set_index(['trade_date', 'stock_code']).loc[:, 'turnover_rate']
 
 tr = np.log(tr).unstack()
 trd = tr.diff()
-
-tr_m = tr.ewm(halflife=20).mean()
+tr_m = tr.ewm(halflife=5).mean()
 tr_s = tr.ewm(halflife=5).std()
 
 trd_s = trd.ewm(halflife=5).std()

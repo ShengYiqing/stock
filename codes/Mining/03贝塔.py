@@ -16,7 +16,7 @@ start_date = '20180101'
 end_date = '20230705'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql_y = tools.generate_sql_y_x([], start_date, end_date, is_industry=False, white_dic=None, n=None)
+sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
@@ -52,7 +52,7 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
-x = r.ewm(halflife=5).corr(r_m) * r.ewm(halflife=5).std()
+x = r.ewm(halflife=20).corr(r_m) * r.ewm(halflife=20).std()
 
 x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
 
