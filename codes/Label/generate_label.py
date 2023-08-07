@@ -134,8 +134,8 @@ beta = r.ewm(halflife=60).corr(r_m) * r.ewm(halflife=60).std()
 beta.replace(np.inf, np.nan, inplace=True)
 beta.replace(-np.inf, np.nan, inplace=True)
 
-logmc = np.log(mc)
-logbp = np.log(1 / pb)
+logmc = np.log(mc).ewm(halflife=60).mean()
+logbp = np.log(1 / pb).ewm(halflife=60).mean()
 l1 = df.loc[:, 'l1_name']
 l2 = df.loc[:, 'l2_name']
 l3 = df.loc[:, 'l3_name']

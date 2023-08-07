@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
     sql = """
@@ -46,9 +46,9 @@ def generate_factor(start_date, end_date):
     af = df.loc[:, 'adj_factor']
     r = np.log(c * af).unstack().diff()
 
-    hl2c = (np.log(h) + np.log(l) - 2 * np.log(c)).unstack()
-    w = hl2c
-    n = 20
+    co = (np.log(c) - np.log(o))
+    w = co.unstack()
+    n = 5
     df = r.ewm(halflife=n).corr(w)
     # df = df * r.ewm(halflife=n).std()
     # df = df / w.ewm(halflife=n).std()
@@ -63,7 +63,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrhl2c', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrco', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

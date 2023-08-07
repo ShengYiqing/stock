@@ -54,7 +54,7 @@ weight_sub = {
     # 'tr': -0.01, 
     # 'mc': -0.01, 
     # 'bp': 0.01, 
-    # 'quality':0.02, 
+    # 'quality':0.01, 
     # 'expectation': 0.02, 
     'cxx': 0.01, 
     'hftech': 0.01
@@ -65,7 +65,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20180701'
+start_date = '20180101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -175,7 +175,7 @@ for factor in factors:
     df_x = tools.standardize(tools.winsorize(df_x))
     # df_x = df_x.rank(axis=1, pct=True)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
-# x = tools.neutralize(x, ['mc', 'bp', 'reversal', 'tr'], ind='l3')
+# x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
 #因子分布
 plt.figure(figsize=(16,9))
 plt.hist(x.values.flatten())

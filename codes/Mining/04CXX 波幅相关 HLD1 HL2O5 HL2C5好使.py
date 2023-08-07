@@ -45,17 +45,20 @@ af = df.loc[:, 'adj_factor']
 r = np.log(c * af).unstack().diff()
 
 oc = np.log(o * af).unstack() - np.log(c * af).unstack().shift()
+co = (np.log(c) - np.log(o))
 hl = (np.log(h) - np.log(l))
 hl2o = (np.log(h) + np.log(l) - 2 * np.log(o))
 hl2c = (np.log(h) + np.log(l) - 2 * np.log(c))
 
-w = DataFrame({
-    'hl':-hl, 
-    'hl2o':hl2o, 
-    'hl2c':-hl2c,
-    }).groupby('trade_date').rank(pct=True).mean(1).unstack()
+w = oc.shift()
 
-x = r.ewm(halflife=20).corr(w)
+# w = DataFrame({
+#     'hl':-hl, 
+#     'hl2o':hl2o, 
+#     'hl2c':-hl2c,
+#     }).groupby('trade_date').rank(pct=True).mean(1).unstack()
+
+x = r.ewm(halflife=5).corr(w)
 
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan

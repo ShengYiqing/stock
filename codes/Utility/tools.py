@@ -148,8 +148,8 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
 
     
-def generate_sql_y_x(factor_names, start_date, end_date, label_type='a', is_trade=True, is_industry=True, white_dic={'price': 0.2, 'revenue': 0.2, 'cmc': 0.2, 'amount': 0.2, 'mc': 0.2}, n=168):
-    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, t1.rank_beta_tune rank_beta '.format(label_type=label_type)
+def generate_sql_y_x(factor_names, start_date, end_date, label_type='a', is_trade=True, is_industry=False, white_dic={'price': 0.2, 'revenue': 0.2, 'cmc': 0.2, 'amount': 0.2, 'mc': 0.2}, n=168):
+    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, (t1.rank_beta + t1.rank_beta_tune) rank_beta '.format(label_type=label_type)
     
     for factor_name in factor_names:
         sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)

@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 60)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
     sql = """
@@ -54,7 +54,7 @@ def generate_factor(start_date, end_date):
 
     r = np.log(c * af).unstack().diff()
     w = sm_vol.diff()
-    n = 20
+    n = 5
     df = r.ewm(halflife=n).corr(w)
     # df = df * r.ewm(halflife=n).std()
     # df = df / w.ewm(halflife=n).std()

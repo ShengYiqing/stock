@@ -1,10 +1,9 @@
 from pandas import DataFrame
 import tools
 
-factors = ['cxx', 
-           'beta', 
-           'reversal', 
-           
+factors = ['beta', 
+           'mc', 
+           'bp'
            ]
 c = {}
 
@@ -14,7 +13,7 @@ for i in range(len(factors)):
             pass
         else:
             
-            start_date = '20230601'
+            start_date = '20180601'
             end_date = '20240101'
             x1 = factors[i]
             x2 = factors[j]

@@ -48,23 +48,21 @@ if __name__ == '__main__':
         ]
     factors = ['tr']
     factor_dic = {
+        'crtrd': -1,
         'crhld': -1, 
-        
-        'crhl2c': -2,
+        'crco': 1, 
+        'croc': 1,
         'crhl2o': 2,
         
-        'crsmnet': 1, 
         'crsmvold': 2, 
-        
-        'crtrd': -1,
         }
-    factors = list(factor_dic.keys()) + ['cxx']
+    factors = list(factor_dic.keys())# + ['cxx']
     # factors = ['quality', 'expectation']
-    factors = ['beta', 'reversal', 'quality', 'cxx', 'hftech']
-    # factors = ['quality']
+    factors = ['beta', 'reversal', 'cxx', 'hftech']
+    # factors = ['cxx']
     for factor_name in factors:
-        start_date = '20220101'
-        end_date = '20230630'
+        start_date = '20210101'
+        end_date = '20230730'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)
         
