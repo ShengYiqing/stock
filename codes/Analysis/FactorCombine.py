@@ -39,25 +39,17 @@ print('seasonal_n_mean', seasonal_n_mean)
 factors = [
     'beta', 
     'reversal', 
-    # 'tr', 
-    # 'mc', 
-    # 'bp', 
-    # 'quality', 
-    # 'expectation', 
-    'cxx', 
-    'hftech', 
+    # 'dep', 
+    # 'cxx', 
+    # 'hftech', 
     ]
 
 weight_sub = {
     'beta':0.01, 
     'reversal': -0.01, 
-    # 'tr': -0.01, 
-    # 'mc': -0.01, 
-    # 'bp': 0.01, 
-    # 'quality':0.01, 
-    # 'expectation': 0.02, 
-    'cxx': 0.01, 
-    'hftech': 0.01
+    # 'dep': 0.01, 
+    # 'cxx': 0.01, 
+    # 'hftech': 0.01
     }
 # weight_sub = {}
 for factor in factors:
@@ -65,7 +57,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20180101'
+start_date = '20230101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -209,11 +201,6 @@ for n in range(num_group):
 
 from matplotlib import cm
 
-group_mean = {}
-for n in range(num_group):
-    group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
-DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm')
-
 long = group_pos[n] * y
 short = group_pos[0] * y
 long_m = long.sum().sort_values(ascending=False).dropna()
@@ -250,6 +237,11 @@ df_ls = DataFrame(
      })
 df_ls.loc[:, 'stock_name'] = [s_name[i] if i in s_name.index else i for i in df_ls.index]
 df_ls = df_ls.set_index('stock_name', append=True).sort_values('多空收益', ascending=False).dropna()
+
+group_mean = {}
+for n in range(num_group):
+    group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
+DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm')
 
 group_mean = {}
 for n in range(num_group):

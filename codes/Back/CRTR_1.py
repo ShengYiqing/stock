@@ -28,26 +28,25 @@ def generate_factor(start_date, end_date):
 
     sql = """
     select t1.trade_date, t1.stock_code, 
-    t1.open, t1.high, t1.low, t1.close, 
-    t2.adj_factor 
+    t1.close, t2.adj_factor, t3.turnover_rate 
     from ttsdaily t1
     left join ttsadjfactor t2
     on t1.stock_code = t2.stock_code
     and t1.trade_date = t2.trade_date
+    left join ttsdailybasic t3
+    on t1.stock_code = t3.stock_code
+    and t1.trade_date = t3.trade_date
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    o = df.loc[:, 'open']
     c = df.loc[:, 'close']
-    h = df.loc[:, 'high']
-    l = df.loc[:, 'low']
     af = df.loc[:, 'adj_factor']
+    tr = df.loc[:, 'turnover_rate']
+    tr = np.log(tr).replace(-np.inf, np.nan).unstack()
     r = np.log(c * af).unstack().diff()
-
-    hl2o = (np.log(h) + np.log(l) - 2 * np.log(o)).unstack()
-    w = hl2o
+    w = tr - tr.ewm(halflife=1).mean()
     n = 5
     df = r.ewm(halflife=n).corr(w)
     # df = df * r.ewm(halflife=n).std()
@@ -63,7 +62,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrhl2o', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrtr', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

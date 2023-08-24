@@ -51,29 +51,35 @@ sm_vol = ((buy_sm_vol + sell_sm_vol) / v).unstack()
 sm_net = ((buy_sm_vol - sell_sm_vol) / v).unstack()
 
 r = np.log(c * af).unstack().diff()
+r = r.sub(r.mean(1), 0)
 
-# hl = hl.rank(axis=1, pct=True)
-#%%
-# x = tr60
-n_list = [5]
-w_dic = {
-    'sm_vol': sm_vol, 
-    # 'sm_net': sm_net, 
-    }
-# w_list = [hl, ho, lo, ch, cl, hla, hloc, hl2o, hl2c]
-for n in n_list:
-    for w in w_dic.keys():
-        x = r.ewm(halflife=n).corr(w_dic[w])
-        x_ = DataFrame(x, index=y.index, columns=y.columns)
-        x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 21, 'cr%s_%s'%(w, n))
-        
-        x = r.ewm(halflife=n).corr(w_dic[w].shift())
-        x_ = DataFrame(x, index=y.index, columns=y.columns)
-        x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 21, 'cr%s_%s_s'%(w, n))
-        
-        x = r.ewm(halflife=n).corr(w_dic[w].diff())
-        x_ = DataFrame(x, index=y.index, columns=y.columns)
-        x_[y.isna()] = np.nan
-        tools.factor_analyse(x_, y, 21, 'cr%s_%s_d'%(w, n))
+w = sm_vol
+
+trade_dates = tools.get_trade_cal(start_date, end_date)
+
+n = 250
+q_lists = [
+    [0.2, 0.8], 
+    ]
+for q_list in q_lists:
+    j = q_list[0]
+    k = q_list[1]
+    dic = {}
+    for trade_date in trade_dates:
+        print(trade_date, n, j, k)
+        r_tmp = r.loc[r.index<=trade_date]
+        w_tmp = w.loc[w.index<=trade_date]
+        r_tmp = r_tmp.iloc[(-n):(-20)]
+        w_tmp = w_tmp.iloc[(-n):(-20)]
+        w_tmp = w_tmp.dropna(axis=1, thresh=0.618*n)
+        w_tmp = w_tmp.rank(pct=True)
+        w_tmp = ((w_tmp>=j)&(w_tmp<=k)).astype(int).replace(0, np.nan)
+        dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
+    
+    x = DataFrame(dic).T
+    # x.index.name = 'trade_date'
+    # x.columns.name = 'stock_code'
+    # x = tools.neutralize(x)
+    x_ = DataFrame(x, index=y.index, columns=y.columns)
+    x_[y.isna()] = np.nan
+    tools.factor_analyse(x_, y, 21, 'wrtr%s[%s,%s]'%(n, j, k))

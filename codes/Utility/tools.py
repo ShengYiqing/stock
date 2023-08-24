@@ -99,57 +99,47 @@ def factor_analyse(x, y, num_group, factor_name):
         group_pos[n][~group_pos[n]] = np.nan
         group_pos[n] = 1 * group_pos[n]
         
-    plt.figure(figsize=(16, 9))
+    
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
-        group_mean[n].plot()
-    plt.legend(['%s'%i for i in range(num_group)], loc="best")
-    plt.title(factor_name+'-cumprod')
-    plt.savefig('%s/Factor/%s/05cumprod.png'%(gc.OUTPUT_PATH, factor_name))
-
-    plt.figure(figsize=(16, 9))
+    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = (group_pos[n] * y).mean(1).cumsum().rename('%s'%(n/num_group))
-        group_mean[n].plot()
-    plt.legend(['%s'%i for i in range(num_group)])
-    plt.title(factor_name+'-cumsum')
-    plt.savefig('%s/Factor/%s/06cumsum.png'%(gc.OUTPUT_PATH, factor_name))
-
-    plt.figure(figsize=(16, 9))
+    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    
+    
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1) - 1*y.mean(1)).cumsum().rename('%s'%(n/num_group))
-        group_mean[n].plot()
-    plt.legend(['%s'%i for i in range(num_group)])
-    plt.title(factor_name+'-alpha')
-    plt.savefig('%s/Factor/%s/07alpha.png'%(gc.OUTPUT_PATH, factor_name))
-
+    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    
     plt.figure(figsize=(16, 9))
     group_hist = [group_mean[i].iloc[np.where(group_mean[i].notna())[0][-1]] for i in range(num_group)]
     plt.bar(range(num_group), group_hist)
-    plt.title(factor_name+'-alpha bar')
-    plt.savefig('%s/Factor/%s/08alpha_bar.png'%(gc.OUTPUT_PATH, factor_name))
-
-    plt.figure(figsize=(16, 9))
+    plt.title(factor_name)
+    
     group_std = {}
     for n in range(num_group):
         group_std[n] = (group_pos[n] * y).std(1).cumsum().rename('%s'%(n/num_group))
-        group_std[n].plot()
-    plt.legend(['%s'%i for i in range(num_group)])
-    plt.title(factor_name+'-std')
-    plt.savefig('%s/Factor/%s/09std.png'%(gc.OUTPUT_PATH, factor_name))
-
+    DataFrame(group_std).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    
+    
     plt.figure(figsize=(16, 9))
     group_hist = [group_std[i].iloc[np.where(group_std[i].notna())[0][-1]] for i in range(num_group)]
     plt.bar(range(num_group), group_hist)
-    plt.title(factor_name+'-std bar')
-    plt.savefig('%s/Factor/%s/10std_bar.png'%(gc.OUTPUT_PATH, factor_name))
-
+    plt.title(factor_name)
     
-def generate_sql_y_x(factor_names, start_date, end_date, label_type='a', is_trade=True, is_industry=False, white_dic={'price': 0.2, 'revenue': 0.2, 'cmc': 0.2, 'amount': 0.2, 'mc': 0.2}, n=168):
-    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, (t1.rank_beta + t1.rank_beta_tune) rank_beta '.format(label_type=label_type)
+    group_r = {}
+    for n in range(num_group):
+        group_r[n] = (group_pos[n] * y).mean(1)
+    DataFrame(group_r).plot(kind='kde', figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    
+    
+def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trade=True, is_industry=True, white_dic={'price': 0.2, 'amount': 0.5, 'mc': 0.8}, n=168):
+    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, (t1.rank_beta + t1.rank_mc + t1.rank_pb) rank_leading '.format(label_type=label_type)
     
     for factor_name in factor_names:
         sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)
@@ -179,7 +169,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='a', is_trad
         (
         select t.*, rank() over (
             partition by trade_date 
-            order by rank_beta desc
+            order by rank_leading desc
         ) my_rank
         from 
         ({sql}) t

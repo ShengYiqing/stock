@@ -31,37 +31,14 @@ if __name__ == '__main__':
     factor_name = 'hfbeta'
     
     factors = [
-        'hfbeta', 'hfcorrmarket', 
-        'hfsigma', 'hfskew', 'hfhl', 
-        'hfetr', 'hfttr', 'hfutr', 
-        'hfspread', 'hfimbalance', 
-        'hfpvcorr', 'hfrvcorr', 'hfpscorr', 'hfpicorr', 
-        'hfintradaymomentum', 
-        'hfcallauctionmomentum', 'hfbluff'
-        ]
-    factors = [
-        'sigmad',
         'beta', 
-        'crhl', 'crshl', 
-        'crv', 'crsv', 
-        'crsm',
+        'reversal', 
+        # 'dep', 
+        # 'cxx', 
+        # 'hftech', 
         ]
-    factors = ['tr']
-    factor_dic = {
-        'crtrd': -1,
-        'crhld': -1, 
-        'crco': 1, 
-        'croc': 1,
-        'crhl2o': 2,
-        
-        'crsmvold': 2, 
-        }
-    factors = list(factor_dic.keys())# + ['cxx']
-    # factors = ['quality', 'expectation']
-    factors = ['beta', 'reversal', 'cxx', 'hftech']
-    # factors = ['cxx']
     for factor_name in factors:
-        start_date = '20210101'
+        start_date = '20230101'
         end_date = '20230730'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)

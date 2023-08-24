@@ -23,36 +23,37 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 60)
+    start_date_sql = tools.trade_date_shift(start_date, 250)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
-
+    
     sql = """
-    select t1.trade_date, t1.stock_code, 
-    t1.close, t2.adj_factor, t3.turnover_rate 
-    from ttsdaily t1
+    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t2.ADJ_FACTOR from ttsdaily t1
     left join ttsadjfactor t2
-    on t1.stock_code = t2.stock_code
-    and t1.trade_date = t2.trade_date
-    left join ttsdailybasic t3
-    on t1.stock_code = t3.stock_code
-    and t1.trade_date = t3.trade_date
+    on t1.STOCK_CODE = t2.STOCK_CODE
+    and t1.TRADE_DATE = t2.TRADE_DATE
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
-    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-    c = df.loc[:, 'close']
-    af = df.loc[:, 'adj_factor']
-    tr = df.loc[:, 'turnover_rate']
-    tr = np.log(tr).replace(-np.inf, np.nan).unstack()
-    r = np.log(c * af).unstack().diff()
-    w = tr.diff()
-    n = 5
-    df = r.ewm(halflife=n).corr(w)
-    # df = df * r.ewm(halflife=n).std()
-    # df = df / w.ewm(halflife=n).std()
-    df = df.replace(-np.inf, np.nan).replace(np.inf, np.nan)
+    df = pd.read_sql(sql, engine)
+    CLOSE = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'CLOSE']
+    ADJ_FACTOR = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'ADJ_FACTOR']
+    CLOSE = CLOSE.unstack()
+    ADJ_FACTOR = ADJ_FACTOR.unstack()
+    CLOSE = np.log(CLOSE * ADJ_FACTOR)
+    r = CLOSE.diff()
     
+    sql = """
+    select trade_date, close from ttsindexdaily
+    where trade_date >= {start_date}
+    and trade_date <= {end_date}
+    and index_name = '中证800'
+    """
+    sql = sql.format(start_date=start_date_sql, end_date=end_date)
+    close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
+    r_m = np.log(close_m).diff()
+    
+    df = r.ewm(halflife=60).corr(r_m) * r.ewm(halflife=60).std()
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
@@ -62,7 +63,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcrtrd', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorbetastyle', engine, schema='factor', if_exists='append', index=True, chunksize=10000, dtype={'STOCK_CODE':VARCHAR(20), 'TRADE_DATE':VARCHAR(8), 'REC_CREATE_TIME':VARCHAR(14)}, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

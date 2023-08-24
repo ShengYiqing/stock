@@ -29,3 +29,11 @@ if len(df) > 0:
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
      
     df.to_sql('ttsindexdaily', engine, schema='tsdata', index=False, if_exists='append', method=tools.mysql_replace_into)
+
+df = tools.download_tushare(pro=pro, api_name='index_daily', ts_code='000906.SH', start_date=start_date, end_date=end_date, fields='ts_code, trade_date, open, high, low, close, pre_close, vol, amount')
+if len(df) > 0:
+    df.rename({'ts_code':'index_code'}, axis=1, inplace=True)
+    df.loc[:, 'index_name'] = '中证800'
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+     
+    df.to_sql('ttsindexdaily', engine, schema='tsdata', index=False, if_exists='append', method=tools.mysql_replace_into)

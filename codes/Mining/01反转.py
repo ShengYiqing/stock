@@ -43,7 +43,8 @@ adj_factor = df.set_index(['trade_date', 'stock_code']).loc[:, 'adj_factor']
 r = np.log(c * adj_factor).groupby('stock_code').diff()
 
 r = r.unstack()
-x = r.ewm(halflife=20).mean()
+x = r.ewm(halflife=5).mean()
+x = tools.neutralize(x, ['mc', 'bp'])
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 7, 'ya')
+tools.factor_analyse(x_, y, 21, 'ya')

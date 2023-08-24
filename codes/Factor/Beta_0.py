@@ -47,6 +47,7 @@ def generate_factor(start_date, end_date):
     select trade_date, close from ttsindexdaily
     where trade_date >= {start_date}
     and trade_date <= {end_date}
+    and index_name = '中证800'
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']

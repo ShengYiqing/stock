@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorcxx` (
+        CREATE TABLE `factor`.`tfactorcrx` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(18) NOT NULL,
@@ -38,13 +38,8 @@ def generate_factor(start_date, end_date):
     except:
         pass
     factor_dic = {
-        'crtrd': -1,
-        'crhld': -1, 
-        'crco': 1, 
-        'croc': 1,
-        'crhl2o': 1,
-        
-        'crsmvold': 1, 
+        'crtr': -1,
+        'crhl': -1, 
         }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False, n=None)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
@@ -62,7 +57,7 @@ def generate_factor(start_date, end_date):
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorcxx', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactorcrx', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
