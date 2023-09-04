@@ -53,7 +53,7 @@ def generate_factor(start_date, end_date):
     close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
     r_m = np.log(close_m).diff()
     
-    df = r.ewm(halflife=60).corr(r_m) * r.ewm(halflife=60).std()
+    df = (r.ewm(halflife=60).corr(r_m) * r.ewm(halflife=60).std()).div(r_m.ewm(halflife=60).std(), axis=0)
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)

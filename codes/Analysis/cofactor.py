@@ -3,10 +3,7 @@ import tools
 
 factors = [
     'beta', 
-    'reversal', 
-    'dep', 
-    'cxx', 
-    'hftech', 
+    'hfbeta' 
     ]
 c = {}
 
@@ -16,7 +13,7 @@ for i in range(len(factors)):
             pass
         else:
             
-            start_date = '20220601'
+            start_date = '20220101'
             end_date = '20240101'
             x1 = factors[i]
             x2 = factors[j]

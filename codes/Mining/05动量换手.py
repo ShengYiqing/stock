@@ -49,14 +49,15 @@ a = df.loc[:, 'amount']
 avg = a / v
 tr = DataFrame(tr, index=r.index, columns=r.columns)
 
-r = r
-w = tr - tr.rolling(60, min_periods=20).mean()
+# r = r.rank(axis=1, pct=True)
+w = tr #- tr.ewm(halflife=5).mean()
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 
 n = 250
+n_q = 20
 q_lists = [
-    [0.05, 0.8], 
+    [i/n_q, (1+i)/n_q] for i in range(n_q)
     ]
 for q_list in q_lists:
     j = q_list[0]
@@ -79,4 +80,4 @@ for q_list in q_lists:
     # x = tools.neutralize(x)
     x_ = DataFrame(x, index=y.index, columns=y.columns)
     x_[y.isna()] = np.nan
-    tools.factor_analyse(x_, y, 3, 'wrtr%s[%s,%s]'%(n, j, k))
+    tools.factor_analyse(x_, y, 21, 'wrtrs%s[%s,%s]'%(n, j, k))

@@ -60,7 +60,7 @@ def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     return df_return
 
 
-def factor_analyse(x, y, num_group, factor_name):
+def factor_analyse(x, y, num_group, factor_name, n_hold=1):
     #因子分布
     try:
         os.mkdir('%s/Factor/%s'%(gc.OUTPUT_PATH, factor_name))
@@ -95,11 +95,10 @@ def factor_analyse(x, y, num_group, factor_name):
     
     group_pos = {}
     for n in range(num_group):
-        group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
-        group_pos[n][~group_pos[n]] = np.nan
-        group_pos[n] = 1 * group_pos[n]
+        group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group)).astype(int)
+        # group_pos[n] = group_pos[n].rolling(n_hold).mean()
+        group_pos[n] = group_pos[n].replace(0, np.nan)
         
-    
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
@@ -138,7 +137,7 @@ def factor_analyse(x, y, num_group, factor_name):
     DataFrame(group_r).plot(kind='kde', figsize=(16, 9), cmap='coolwarm', title=factor_name)
     
     
-def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trade=True, is_industry=True, white_dic={'price': 0.2, 'amount': 0.5, 'mc': 0.8}, n=168):
+def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trade=True, is_industry=False, white_dic={'price': 0.2, 'amount': 0.5, 'mc': 0.8}, n=168):
     sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, (t1.rank_beta + t1.rank_mc + t1.rank_pb) rank_leading '.format(label_type=label_type)
     
     for factor_name in factor_names:
@@ -252,7 +251,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc', 'bp'], ind='l3'):
+def neutralize(data, factors=['betastyle', 'mc', 'bp'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

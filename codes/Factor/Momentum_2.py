@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
     try:
         sql = """
-        CREATE TABLE `factor`.`tfactorquality` (
+        CREATE TABLE `factor`.`tfactormomentum` (
           `REC_CREATE_TIME` VARCHAR(14) NULL,
           `TRADE_DATE` VARCHAR(8) NOT NULL,
           `STOCK_CODE` VARCHAR(18) NOT NULL,
@@ -37,35 +37,31 @@ def generate_factor(start_date, end_date):
             con.execute(sql)
     except:
         pass
-    factor_dic = {'operation':1, 
-                  'gross':1, 
-                  'core':1, 
-                  'profitability':1, 
-                  'cash':1, 
-                  'growth':1, 
-                  'stability':1, 
-                  }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, is_industry=False, white_dic=None, n=None)
+    factor_dic = {
+        'momentumhl': 1, 
+        'momentumtr': 1,
+        }
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False, n=None)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)
     df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
-    df = df.groupby('trade_date').rank(pct=True)
+    # df = df.groupby('trade_date').rank(pct=True)
     for factor in factor_dic.keys():
         df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
     df = df.mean(1)
     df = df.unstack()
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
-    df = tools.neutralize(df)
+    # df = tools.neutralize(df)
     df = DataFrame({'factor_value':df.stack()})
     df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df.to_sql('tfactorquality', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df.to_sql('tfactormomentum', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
-    start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m%d')
-    start_date = '20100101'
+    start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
+    start_date = '20120101'
     generate_factor(start_date, end_date)

@@ -53,10 +53,11 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
-x = r.ewm(halflife=5).corr(r_m) * r.ewm(halflife=5).std()
+x = (r.ewm(halflife=5).corr(r_m) * r.ewm(halflife=5).std()).div(r_m.ewm(halflife=5).std(), axis=0)
 
 x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
 
+x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 21, 'ya')

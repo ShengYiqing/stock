@@ -13,7 +13,7 @@ import Global_Config as gc
 import tools
 from sqlalchemy import create_engine
 
-def single_factor_analysis(factor_name, start_date, end_date):
+def single_factor_analysis(factor_name, start_date, end_date, n_hold):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     
     sql = tools.generate_sql_y_x([factor_name], start_date, end_date)
@@ -24,7 +24,7 @@ def single_factor_analysis(factor_name, start_date, end_date):
     # x = tools.neutralize(x)
     y = df.loc[:, 'r_d'].unstack()
     
-    tools.factor_analyse(x, y, 21, factor_name)
+    tools.factor_analyse(x, y, 21, factor_name, n_hold)
     
     
 if __name__ == '__main__':
@@ -32,14 +32,26 @@ if __name__ == '__main__':
     
     factors = [
         'beta', 
-        'reversal', 
-        # 'dep', 
-        # 'cxx', 
+        'quality'
+        # 'hfbeta'
+        # 'reversal', 
+        # 'momentumhl', 
+        # 'momentumtr',
+        # 'momentum', 
         # 'hftech', 
         ]
+    n_hold = 1
+    # factors = [
+    #     'beta', 
+    #     'hfbeta', 
+    #     'hfcorrmarket', 
+    #     'hfetr', 
+    #               'hfsigma', 'hfsigmaopen', 'hfskew', 
+    #               'hfspread', 'hfimbalance', 
+    #               ]
     for factor_name in factors:
-        start_date = '20230101'
-        end_date = '20230730'
+        start_date = '20180101'
+        end_date = '20230830'
         print(factor_name, start_date, end_date)
-        single_factor_analysis(factor_name, start_date, end_date)
+        single_factor_analysis(factor_name, start_date, end_date, n_hold)
         

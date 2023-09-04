@@ -26,21 +26,12 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.open, t1.high, t1.low, t1.close, 
-t2.adj_factor, 
-t3.turnover_rate, 
-tmf.buy_sm_vol, tmf.sell_sm_vol,  
-t1.vol
+t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount,
+t2.adj_factor 
 from ttsdaily t1
 left join ttsadjfactor t2
 on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
-left join ttsdailybasic t3
-on t1.stock_code = t3.stock_code
-and t1.trade_date = t3.trade_date
-left join ttsmoneyflow tmf
-on t1.stock_code = tmf.stock_code
-and t1.trade_date = tmf.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
 """
@@ -50,36 +41,47 @@ o = df.loc[:, 'open']
 c = df.loc[:, 'close']
 h = df.loc[:, 'high']
 l = df.loc[:, 'low']
-af = df.loc[:, 'adj_factor']
-tr = df.loc[:, 'turnover_rate']
-trd = np.log(tr).replace(-np.inf, np.nan).groupby('trade_date').diff()
 v = df.loc[:, 'vol']
-buy_sm_vol = df.loc[:, 'buy_sm_vol']
-sell_sm_vol = df.loc[:, 'sell_sm_vol']
-
-sm_vol = ((buy_sm_vol + sell_sm_vol) / v)
-sm_net = ((buy_sm_vol - sell_sm_vol) / v)
-
-oc = np.log(o * af).unstack() - np.log(c * af).unstack().shift()
-hld = (np.log(h) - np.log(l)).groupby('trade_date').diff()
-hl2o = (np.log(h) + np.log(l) - 2 * np.log(o))
-hl2c = (np.log(h) + np.log(l) - 2 * np.log(c))
-
+a = df.loc[:, 'amount']
+af = df.loc[:, 'adj_factor']
+avg = a / v
 r = np.log(c * af).unstack().diff()
 
-w_df = DataFrame({
-    'trd':-trd,
-    'hld':-hld, 
-    'hl2o':hl2o, 
-    'hl2c':-hl2c,
-    'sm_vol':sm_vol,
-    })
-w = w_df.groupby('trade_date').rank(pct=True).mean(1).unstack()
+oc = np.log(o * af).unstack() - np.log(c * af).unstack().shift()
+co = (np.log(c) - np.log(o)).unstack()
+hl = (np.log(h) - np.log(l)).unstack()
+hl2o = (np.log(h) + np.log(l) - 2 * np.log(o)).unstack()
+hl2c = (np.log(h) + np.log(l) - 2 * np.log(c)).unstack()
 
-for k in w_df.keys():
-    w = w_df[k].unstack()
-    x = r.ewm(halflife=20).corr(w)
+# r = r.rank(axis=1, pct=True)
+w = hl #- hl.ewm(halflife=5).mean()
+
+trade_dates = tools.get_trade_cal(start_date, end_date)
+
+n = 250
+n_q = 20
+q_lists = [
+    [i/n_q, (1+i)/n_q] for i in range(n_q)
+    ]
+for q_list in q_lists:
+    j = q_list[0]
+    k = q_list[1]
+    dic = {}
+    for trade_date in trade_dates:
+        print(trade_date, n, j, k)
+        r_tmp = r.loc[r.index<=trade_date]
+        w_tmp = w.loc[w.index<=trade_date]
+        r_tmp = r_tmp.iloc[(-n):(-20)]
+        w_tmp = w_tmp.iloc[(-n):(-20)]
+        w_tmp = w_tmp.dropna(axis=1, thresh=0.618*n)
+        w_tmp = w_tmp.rank(pct=True)
+        w_tmp = ((w_tmp>=j)&(w_tmp<=k)).astype(int).replace(0, np.nan)
+        dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
     
+    x = DataFrame(dic).T
+    # x.index.name = 'trade_date'
+    # x.columns.name = 'stock_code'
+    # x = tools.neutralize(x)
     x_ = DataFrame(x, index=y.index, columns=y.columns)
     x_[y.isna()] = np.nan
-    tools.factor_analyse(x_, y, 7, 'cr%s'%k)
+    tools.factor_analyse(x_, y, 21, 'wrhls%s[%s,%s]'%(n, j, k))

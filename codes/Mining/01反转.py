@@ -22,7 +22,7 @@ y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
 #%%
 n = 250
-start_date_sql = tools.trade_date_shift(start_date, n+1)
+start_date_sql = tools.trade_date_shift(start_date, n)
 
 sql = """
 select t1.trade_date, t1.stock_code, 
@@ -33,8 +33,10 @@ on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
+and t1.stock_code in {stock_codes}
 """
-sql = sql.format(start_date=start_date_sql, end_date=end_date)
+sql = sql.format(start_date=start_date_sql, end_date=end_date, 
+                 stock_codes=tuple(stock_codes))
 df = pd.read_sql(sql, engine)
 
 c = df.set_index(['trade_date', 'stock_code']).loc[:, 'close']
@@ -44,7 +46,7 @@ r = np.log(c * adj_factor).groupby('stock_code').diff()
 
 r = r.unstack()
 x = r.ewm(halflife=5).mean()
-x = tools.neutralize(x, ['mc', 'bp'])
+x = tools.neutralize(x, ['mc', 'bp', 'betastyle'])
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 21, 'ya')
