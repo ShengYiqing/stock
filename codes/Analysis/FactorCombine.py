@@ -55,7 +55,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20180101'
+start_date = '20120101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:

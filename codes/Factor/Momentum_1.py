@@ -23,34 +23,39 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    try:
-        sql = """
-        CREATE TABLE `factor`.`tfactormomentum` (
-          `REC_CREATE_TIME` VARCHAR(14) NULL,
-          `TRADE_DATE` VARCHAR(8) NOT NULL,
-          `STOCK_CODE` VARCHAR(18) NOT NULL,
-          `FACTOR_VALUE` DOUBLE NULL,
-          PRIMARY KEY (`TRADE_DATE`, `STOCK_CODE`))
-        """
-        with engine.connect() as con:
-            con.execute(sql)
-    except:
-        pass
-    factor_dic = {
-        'momentumhl': 1, 
-        'momentumtr': 1,
-        }
-    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, white_dic=None, is_trade=False, is_industry=False, n=None)
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+    start_date_sql = tools.trade_date_shift(start_date, 250)
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
-    df = pd.read_sql(sql, engine)
-    df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
-    # df = df.groupby('trade_date').rank(pct=True)
-    for factor in factor_dic.keys():
-        df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
-    df = df.mean(1)
-    df = df.unstack()
+    sql = """
+    select t1.trade_date, t1.stock_code, 
+    t1.close, t1.high, t1.low, t2.adj_factor, 
+    tud.up_limit, tud.down_limit 
+    from ttsdaily t1
+    left join ttsadjfactor t2
+    on t1.stock_code = t2.stock_code
+    and t1.trade_date = t2.trade_date
+    left join ttsstklimit tud
+    on t1.stock_code = tud.stock_code
+    and t1.trade_date = tud.trade_date
+    where t1.trade_date >= {start_date}
+    and t1.trade_date <= {end_date}
+    """
+    sql = sql.format(start_date=start_date_sql, end_date=end_date)
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+    c = df.loc[:, 'close']
+    af = df.loc[:, 'adj_factor']
+    r = np.log(c * af).unstack().diff()
+
+    h = df.loc[:, 'high']
+    l = df.loc[:, 'low']
+    u = df.loc[:, 'up_limit']
+    d = df.loc[:, 'down_limit']
+
+    ud = (u == h) | (d == l)
+    ud = ud.unstack().fillna(False)
+    r[ud] = np.nan
+
+    df = r.rolling(230, min_periods=60).mean().shift(20)
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'
     # df = tools.neutralize(df)
@@ -63,5 +68,5 @@ def generate_factor(start_date, end_date):
 if __name__ == '__main__':
     end_date = datetime.datetime.today().strftime('%Y%m%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(7)).strftime('%Y%m%d')
-    start_date = '20120101'
+    start_date = '20100101'
     generate_factor(start_date, end_date)

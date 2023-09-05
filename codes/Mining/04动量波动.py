@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 
 #%%
 start_date = '20180101'
-end_date = '20230705'
+end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
@@ -26,12 +26,16 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?char
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.open, t1.high, t1.low, t1.close, t1.vol, t1.amount,
-t2.adj_factor 
+t1.open, t1.high, t1.low, t1.close, 
+t2.adj_factor, 
+tud.up_limit, tud.down_limit 
 from ttsdaily t1
 left join ttsadjfactor t2
 on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
+left join ttsstklimit tud
+on t1.stock_code = tud.stock_code
+and t1.trade_date = tud.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
 """
@@ -41,12 +45,15 @@ o = df.loc[:, 'open']
 c = df.loc[:, 'close']
 h = df.loc[:, 'high']
 l = df.loc[:, 'low']
-v = df.loc[:, 'vol']
-a = df.loc[:, 'amount']
-af = df.loc[:, 'adj_factor']
-avg = a / v
-r = np.log(c * af).unstack().diff()
+u = df.loc[:, 'up_limit']
+d = df.loc[:, 'down_limit']
 
+ud = (u == h) | (d == l)
+ud = ud.unstack().fillna(False)
+af = df.loc[:, 'adj_factor']
+
+r = np.log(c * af).unstack().diff()
+r[ud] = np.nan
 oc = np.log(o * af).unstack() - np.log(c * af).unstack().shift()
 co = (np.log(c) - np.log(o)).unstack()
 hl = (np.log(h) - np.log(l)).unstack()
@@ -62,6 +69,9 @@ n = 250
 n_q = 20
 q_lists = [
     [i/n_q, (1+i)/n_q] for i in range(n_q)
+    ]
+q_lists = [
+    [0.05, 1]
     ]
 for q_list in q_lists:
     j = q_list[0]

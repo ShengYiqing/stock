@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 
 #%%
 start_date = '20180101'
-end_date = '20230705'
+end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)

@@ -42,7 +42,7 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230904'
+trade_date = '20230905'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
