@@ -79,9 +79,9 @@ w_dic = {
     }
 
 q_dic = {
-    'w1': [0.05, 1], 
-    'w2': [0.05, 1], 
-    'w3': [0, 0.95], 
+    'w1': [0.05, 0.8], 
+    'w2': [0.05, 0.8], 
+    'w3': [0.2, 0.95], 
     }
 
 trade_dates = tools.get_trade_cal(start_date, end_date)

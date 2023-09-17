@@ -2,8 +2,8 @@ from pandas import DataFrame
 import tools
 
 factors = [
-    'beta', 
-    'hfbeta' 
+    'momentum', 
+    'seasonality' 
     ]
 c = {}
 

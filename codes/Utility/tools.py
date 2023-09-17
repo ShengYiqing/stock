@@ -60,7 +60,7 @@ def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     return df_return
 
 
-def factor_analyse(x, y, num_group, factor_name, n_hold=1):
+def factor_analyse(x, y, num_group, factor_name):
     #因子分布
     try:
         os.mkdir('%s/Factor/%s'%(gc.OUTPUT_PATH, factor_name))
@@ -137,8 +137,15 @@ def factor_analyse(x, y, num_group, factor_name, n_hold=1):
     DataFrame(group_r).plot(kind='kde', figsize=(16, 9), cmap='coolwarm', title=factor_name)
     
     
-def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trade=True, is_industry=False, white_dic={'price': 0.2, 'amount': 0.5, 'mc': 0.8}, n=168):
-    sql = ' select t1.trade_date, t1.stock_code, t1.r_d_{label_type} r_d, t1.r_w_{label_type} r_w, t1.r_m_{label_type} r_m, (t1.rank_beta + t1.rank_mc + t1.rank_pb) rank_leading '.format(label_type=label_type)
+def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
+                     is_trade=True, is_industry=False, 
+                     white_dic={'price': 0.2, 'amount': 0.5, 'mc':0.8}, 
+                     n=777):
+    sql = """
+    select t1.trade_date, t1.stock_code, 
+    t1.r_{label_type} r_d, 
+    (ts.rank_mc) leading_stock 
+    """.format(label_type=label_type)
     
     for factor_name in factor_names:
         sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)
@@ -151,6 +158,12 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trad
     if is_industry:
         sql += """ left join indsw.tindsw t3
                    on t1.stock_code = t3.stock_code """
+    sql += """
+    left join style.tdailystyle ts
+    on t1.trade_date = ts.trade_date 
+    and t1.stock_code = ts.stock_code
+    """
+    
     sql += """ where t1.trade_date >= \'{start_date}\'
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
     if is_trade:
@@ -168,7 +181,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', is_trad
         (
         select t.*, rank() over (
             partition by trade_date 
-            order by rank_leading desc
+            order by leading_stock desc
         ) my_rank
         from 
         ({sql}) t
@@ -251,7 +264,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['betastyle', 'mc', 'bp'], ind='l3'):
+def neutralize(data, factors=['mc'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
@@ -312,7 +325,8 @@ def neutralize(data, factors=['betastyle', 'mc', 'bp'], ind='l3'):
                 X.loc[:, factor] = winsorize(X.loc[:, factor])
             
             y = winsorize(data.loc[:, 'y'])
-            
+            # W = DataFrame(np.diag(winsorize(data.loc[:, 'mc'])), index=y.index, columns=y.index)
+            # y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
             y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
             res = standardize(winsorize(y - y_predict))
             return res

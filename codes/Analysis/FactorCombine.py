@@ -37,31 +37,34 @@ print('seasonal_n_mean', seasonal_n_mean)
 
 
 factors = [
-    'beta',
-    'quality', 
+    # 'bp', 
+    # 'quality',
+    'momentum', 
     'reversal', 
-    'momentum',  
+    'seasonality'
     ]
 
 weight_sub = {
-    'beta': 0.01,
-    'quality': 0.01, 
-    'reversal': -0.01, 
-    'momentum': 0.01,  
+    # 'bp':0, 
+    # 'quality': 0.01, 
+    # 'momentum': 0.03, 
+    # 'reversal': -0.03, 
+    # 'seasonality': 0.03,  
     }
+
 # weight_sub = {}
 for factor in factors:
     if factor not in weight_sub.keys():
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20120101'
+start_date = '20180101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
     end_date = datetime.datetime.today().strftime('%Y%m%d')
 
-# end_date = '20230302'
+# end_date = '20190101'
 
 print('factors: ', factors)
 print('weight_sub: ', weight_sub)

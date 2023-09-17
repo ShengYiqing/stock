@@ -26,7 +26,7 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select STOCK_CODE, TRADE_DATE, total_mv from ttsdailybasic
+    select STOCK_CODE, TRADE_DATE, total_mv from tsdata.ttsdailybasic
     where trade_date >= {start_date}
     and trade_date <= {end_date}
     """

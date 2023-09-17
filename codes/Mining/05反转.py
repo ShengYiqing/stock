@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 
 #%%
 start_date = '20180101'
-end_date = '20230705'
+end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
@@ -22,42 +22,41 @@ y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
 #%%
 n = 250
-start_date_sql = tools.trade_date_shift(start_date, n+1)
+start_date_sql = tools.trade_date_shift(start_date, n)
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.close, 
-t2.adj_factor from tsdata.ttsdaily t1
+t1.open, t1.high, t1.low, t1.close, 
+t2.adj_factor, 
+ts.rank_beta, ts.rank_mc, ts.rank_bp
+from tsdata.ttsdaily t1
 left join tsdata.ttsadjfactor t2
 on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
+left join style.tdailystyle ts
+on t1.stock_code = ts.stock_code
+and t1.trade_date = ts.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
+and t1.stock_code in {stock_codes}
 """
-sql = sql.format(start_date=start_date_sql, end_date=end_date)
-df = pd.read_sql(sql, engine)
+sql = sql.format(start_date=start_date_sql, end_date=end_date, 
+                 stock_codes=tuple(stock_codes))
+df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 
-c = df.set_index(['trade_date', 'stock_code']).loc[:, 'close']
+c = df.loc[:, 'close']
 
-adj_factor = df.set_index(['trade_date', 'stock_code']).loc[:, 'adj_factor']
+adj_factor = df.loc[:, 'adj_factor']
 r = np.log(c * adj_factor).groupby('stock_code').diff()
+
 r = r.unstack()
 
-sql = """
-select trade_date, close from tsdata.ttsindexdaily
-where trade_date >= {start_date}
-and trade_date <= {end_date}
-and index_name = '中证800'
-"""
-sql = sql.format(start_date=start_date_sql, end_date=end_date)
-close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
-r_m = np.log(close_m).diff()
+rank_beta = df.loc[:, 'rank_beta'].unstack()
+rank_mc = df.loc[:, 'rank_mc'].unstack()
+rank_bp = df.loc[:, 'rank_bp'].unstack()
 
-x = (r.ewm(halflife=5).corr(r_m) * r.ewm(halflife=5).std()).div(r_m.ewm(halflife=5).std(), axis=0)
-
-x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
-
+x = r.ewm(halflife=5).mean()
 x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 21, 'ya')
+tools.factor_analyse(x_, y, 10, 'ya')

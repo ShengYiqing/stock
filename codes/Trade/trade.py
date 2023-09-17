@@ -20,6 +20,56 @@ import tools
 import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
+trade_date = datetime.datetime.today().strftime('%Y%m%d')
+trade_date = '20230915'
+
+with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
+    position = pickle.load(f)
+
+buy_list = ['002352', 
+            ]
+
+sell_list= ['688002',
+            ]
+
+position.extend(buy_list)
+position = list(set(position) - set(sell_list))
+# position = ['300308', '002230', '601995', '000988', '600763', 
+#             '600570', '603392', '688012', '002517', '603039', 
+#             '300059', '002568', '300033', '300418', '603986', 
+#             '300496', '688041', '603019']
+with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
+    pickle.dump(position, f)
+
+position.sort()
+print('----持股列表----')
+print(position)
+print('----持股数量----')
+print('持股数量: ', len(position))
+
+factors = [
+    # 'bp', 
+    # 'quality',
+    # 'beta', 
+    'momentum', 
+    'reversal', 
+    'seasonality'
+    ]
+
+weight_sub = {
+    # 'bp':0, 
+    # 'quality': 0.01, 
+    # 'beta': 0.02, 
+    'momentum': 0.02, 
+    'reversal': -0.02, 
+    'seasonality': 0.02,  
+    }
+
+for factor in factors:
+    if factor not in weight_sub.keys():
+        weight_sub[factor] = 0
+weight_sub = Series(weight_sub)
+
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_stock_ind = """
@@ -41,33 +91,6 @@ ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1'] if len(set(list(ind.loc[ind.lo
 ind_num_dic = {i : 0 for i in ind.loc[:, 'ind_1']}
 ind_num_dic_3 = {i : 0 for i in ind.loc[:, 'ind_3']}
 
-trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20230905'
-
-with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
-    position = pickle.load(f)
-
-buy_list = [
-            ]
-
-sell_list= [
-            ]
-
-position.extend(buy_list)
-position = list(set(position) - set(sell_list))
-position = ['300308', '002230', '601995', '000988', '600763', 
-            '600570', '603392', '688012', '002517', '603039', 
-            '300059', '002568', '300033', '300418', '603986', 
-            '300496', '688041', '603019']
-with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
-    pickle.dump(position, f)
-
-position.sort()
-print('----持股列表----')
-print(position)
-print('----持股数量----')
-print('持股数量: ', len(position))
-
 halflife_mean = 250
 halflife_cov = 750
 
@@ -80,25 +103,6 @@ n_5 = n_4 + 250
 weight_s = 0.382
 
 lambda_i = 0.001
-
-factors = [
-    'beta',
-    'quality', 
-    'reversal', 
-    # 'momentum',  
-    ]
-
-weight_sub = {
-    'beta': 0.01,
-    'quality': 0.01, 
-    'reversal': -0.01, 
-    # 'momentum': 0.01,
-    }
-
-for factor in factors:
-    if factor not in weight_sub.keys():
-        weight_sub[factor] = 0
-weight_sub = Series(weight_sub)
 
 end_date = trade_date
 start_date = trade_date
@@ -184,13 +188,11 @@ for trade_date in trade_dates:
     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
     weight.loc[trade_date, :] = (np.linalg.inv(mat).dot((ic_mean.loc[trade_date, :] * tr).values) + weight_sub) / 2
 
-sql = tools.generate_sql_y_x(factors + ['mc', 'bp', 'betastyle'], start_date, end_date)
+sql = tools.generate_sql_y_x(factors + ['mc'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 df.loc[:, 'mc'] = tools.standardize(tools.winsorize(df.loc[:, 'mc']))
-df.loc[:, 'bp'] = tools.standardize(tools.winsorize(df.loc[:, 'bp']))
-df.loc[:, 'betastyle'] = tools.standardize(tools.winsorize(df.loc[:, 'betastyle']))
 for factor in factors:
     df.loc[:, factor] = tools.standardize(tools.winsorize(df.loc[:, factor]))
 y = df.loc[:, 'r_d'].unstack()
@@ -209,47 +211,31 @@ r_hat_rank = r_hat.loc[trade_date, :].rank().loc[position].sort_values(ascending
 df = df.loc[trade_date, :]
 stock_list_old = list(set(r_hat_rank.index).intersection(set(df.index)))
 print('----持股暴露----')
-print(df.loc[stock_list_old, ['mc', 'bp', 'betastyle'] + factors].mean().round(2))
+print(df.loc[stock_list_old, ['mc'] + factors].mean().round(2))
 print('----板块数量----')
 print('00', len(list(filter(lambda x:x[0] == '0', position))))
 print('30', len(list(filter(lambda x:x[0] == '3', position))))
 print('60', len(list(filter(lambda x:x[0:2] == '60', position))))
 print('68', len(list(filter(lambda x:x[0:3] == '688', position))))
 
-df.loc[:, ['mc', 'bp', 'betastyle']] = df.loc[:, ['mc', 'bp', 'betastyle']].rank(pct=True)
+df.loc[:, ['mc']] = df.loc[:, ['mc']].rank(pct=True)
 
 dp_mask = (2/3<=df.mc)
 zp_mask = (1/3<df.mc)&(df.mc<=2/3)
 xp_mask = (df.mc<=1/3)
 
-jz_mask = (2/3<=df.bp)
-ph_mask = (1/3<df.bp)&(df.bp<=2/3)
-cz_mask = (df.bp<=1/3)
-
-gb_mask = (2/3<=df.betastyle)
-zb_mask = (1/3<df.betastyle)&(df.betastyle<=2/3)
-db_mask = (df.betastyle<=1/3)
-
 df.loc[dp_mask, 'mc'] = '大盘'
 df.loc[zp_mask, 'mc'] = '中盘'
 df.loc[xp_mask, 'mc'] = '小盘'
-
-df.loc[jz_mask, 'bp'] = '价值'
-df.loc[ph_mask, 'bp'] = '平衡'
-df.loc[cz_mask, 'bp'] = '成长'
-
-df.loc[jz_mask, 'betastyle'] = '高贝'
-df.loc[ph_mask, 'betastyle'] = '中贝'
-df.loc[cz_mask, 'betastyle'] = '低贝'
 
 hold_dic = {}
 for stock in r_hat_rank.index:
     if stock in stock_ind.index:
         hold_dic[stock] = [stock_ind.loc[stock, 'stock_name'], stock_ind.loc[stock, 'ind_1'], stock_ind.loc[stock, 'ind_2'], stock_ind.loc[stock, 'ind_3'], r_hat_rank.loc[stock], np.around(ret.loc[stock], 3)]
         if stock in df.index:
-            hold_dic[stock].extend(list(df.loc[stock].loc[['mc', 'bp', 'betastyle'] + factors]))
+            hold_dic[stock].extend(list(df.loc[stock].loc[['mc'] + factors]))
         else:
-            hold_dic[stock].extend([np.nan] * (3+len(factors)))
+            hold_dic[stock].extend([np.nan] * (1+len(factors)))
     else:
         continue
     if stock_ind.loc[stock, 'ind_1'] in ind_num_dic.keys():
@@ -257,7 +243,7 @@ for stock in r_hat_rank.index:
     else:
         ind_num_dic[stock_ind.loc[stock, 'ind_1']] = 1
 df_hold = DataFrame(hold_dic).T
-df_hold.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益', 'mc', 'bp', 'betastyle'] + factors
+df_hold.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益', 'mc'] + factors
 df_hold.index.name = '股票代码'
 df_hold.reset_index(inplace=True)
 df_hold = df_hold.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
@@ -291,10 +277,10 @@ for ind in ind_num_dic_3.keys():
                                    stock_ind.loc[stock_code, 'ind_3'], 
                                    r_hat_rank_tmp.loc[stock_code], 
                                    np.around(ret_tmp.loc[stock_code], 3),]
-            buy_dic[stock_code].extend(df.loc[stock_code, ['mc', 'bp', 'betastyle'] + factors])
+            buy_dic[stock_code].extend(df.loc[stock_code, ['mc'] + factors])
 
 df_buy = DataFrame(buy_dic).T
-df_buy.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益', 'mc', 'bp', 'betastyle'] + factors
+df_buy.columns = ['股票名称', '一级行业', '二级行业', '三级行业', '排名', '预期收益', 'mc'] + factors
 df_buy.index.name = '股票代码'
 df_buy.reset_index(inplace=True)
 df_buy = df_buy.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
@@ -303,6 +289,6 @@ df_buy.loc[:, '持仓'] = 0
 df_print = pd.concat([df_hold, df_buy])
 df_print = df_print.groupby(['一级行业', '二级行业', '三级行业']).apply(lambda x:x.sort_values('排名', ascending=False, ignore_index=True))
 df_print.index = range(len(df_print))
-df_print = df_print.loc[:, ['股票代码', '股票名称', '一级行业', '二级行业', '三级行业', 'mc', 'bp', 'betastyle', '持仓', '排名', '预期收益']+factors]
+df_print = df_print.loc[:, ['股票代码', '股票名称', '一级行业', '二级行业', '三级行业', 'mc', '持仓', '排名', '预期收益']+factors]
 df_print.rename({factor:factor + '(%.2f)'%weight.loc[trade_date, factor] for factor in factors}, axis=1, inplace=True)
 df_print.to_excel('D:/stock/信号/%s.xlsx'%trade_date)
