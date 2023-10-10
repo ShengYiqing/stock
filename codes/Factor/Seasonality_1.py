@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 1250)
+    start_date_sql = tools.trade_date_shift(start_date, 750)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
     sql = """
@@ -55,8 +55,8 @@ def generate_factor(start_date, end_date):
     ud = ud.unstack().fillna(False)
     r[ud] = np.nan
     dic = {}
-    for i in range(1, 6):
-        dic[i] = (6-i) * r.rolling(20, min_periods=5).mean().shift(240*i-20).stack()
+    for i in range(1, 4):
+        dic[i] = (4-i) * r.rolling(30, min_periods=5).mean().shift(240*i-20).stack()
     seasonality = DataFrame(dic).mean(1).unstack()
     df = seasonality.loc[seasonality.index>=start_date]
     df.index.name = 'trade_date'

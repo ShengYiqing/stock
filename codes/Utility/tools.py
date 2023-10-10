@@ -138,11 +138,12 @@ def factor_analyse(x, y, num_group, factor_name):
     
     
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
-                     is_trade=True, is_industry=False, 
-                     white_dic={'price': 0.2, 'amount': 0.5, 'mc':0.8}, 
-                     n=777):
+                     is_trade=True, is_industry=True, 
+                     white_dic={'price': 5, 'amount': 1e5}, 
+                     style_dic={'rank_mc':0.8, 'rank_pb':0.2, 'rank_pe':0.05, 'rank_roe':0.05}, 
+                     n_ind=7, n=300):
     sql = """
-    select t1.trade_date, t1.stock_code, 
+    select t3.l3_name, t1.trade_date, t1.stock_code, 
     t1.r_{label_type} r_d, 
     (ts.rank_mc) leading_stock 
     """.format(label_type=label_type)
@@ -155,9 +156,10 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
                    on t1.trade_date = t{factor_name}.trade_date 
                    and t1.stock_code = t{factor_name}.stock_code """.format(factor_name=factor_name)
 
-    if is_industry:
-        sql += """ left join indsw.tindsw t3
-                   on t1.stock_code = t3.stock_code """
+    sql += """ 
+    left join indsw.tindsw t3
+    on t1.stock_code = t3.stock_code
+    """
     sql += """
     left join style.tdailystyle ts
     on t1.trade_date = ts.trade_date 
@@ -171,10 +173,26 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
     
     if white_dic:
         for k in white_dic.keys():
-            sql += " and t1.rank_{k} >= {v} ".format(k=k, v=white_dic[k])
+            sql += " and t1.{k} >= {v} ".format(k=k, v=white_dic[k])
+    if style_dic:
+        for k in style_dic.keys():
+            sql += " and ts.{k} >= {v} ".format(k=k, v=style_dic[k])
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     
+    if n_ind:
+        sql = """
+        select t.* from 
+        (
+        select t.*, rank() over (
+            partition by trade_date, l3_name
+            order by leading_stock desc
+        ) my_rank_ind
+        from 
+        ({sql}) t
+        ) t
+        where t.my_rank_ind <= {n_ind}
+        """.format(sql=sql, n_ind=n_ind)
     if n:
         sql = """
         select t.* from 
@@ -264,7 +282,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['mc'], ind='l3'):
+def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
@@ -325,7 +343,7 @@ def neutralize(data, factors=['mc'], ind='l3'):
                 X.loc[:, factor] = winsorize(X.loc[:, factor])
             
             y = winsorize(data.loc[:, 'y'])
-            # W = DataFrame(np.diag(winsorize(data.loc[:, 'mc'])), index=y.index, columns=y.index)
+            # W = DataFrame(np.diag(data.loc[:, ['mc', 'bp']].rank(pct=True).mean(1)), index=y.index, columns=y.index)
             # y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
             y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
             res = standardize(winsorize(y - y_predict))

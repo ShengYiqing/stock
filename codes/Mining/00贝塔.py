@@ -12,17 +12,18 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
-end_date = '20230830'
+start_date = '20180901'
+end_date = '20230930'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
+sql_y = tools.generate_sql_y_x([], start_date, end_date, white_dic=None, style_dic=None, n_ind=300, n=30000)
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
 #%%
 n = 250
-start_date_sql = tools.trade_date_shift(start_date, n+1)
+start_date_sql = tools.trade_date_shift(start_date, n)
 
 sql = """
 select t1.trade_date, t1.stock_code, 
@@ -59,12 +60,10 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
-n = 20
-x = (r.ewm(halflife=n, min_periods=60).corr(r_m) * r.ewm(halflife=n, min_periods=60).std()).div(r_m.ewm(halflife=n, min_periods=60).std(), axis=0)
-x = x 
-x = x.replace(-np.inf, np.nan).replace(np.inf, np.nan)
-
-# x = tools.neutralize(x)
-x_ = DataFrame(x, index=y.index, columns=y.columns)
-x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'ya')
+for n in [5, 20, 60]:
+    x = (r.ewm(halflife=n, min_periods=60).corr(r_m) * r.ewm(halflife=n, min_periods=60).std()).div(r_m.ewm(halflife=n, min_periods=60).std(), axis=0)
+    
+    x = tools.neutralize(x, ['mc', 'bp'])
+    x_ = DataFrame(x, index=y.index, columns=y.columns)
+    x_[y.isna()] = np.nan
+    tools.factor_analyse(x_, y, 10, 'beta_%s'%n)

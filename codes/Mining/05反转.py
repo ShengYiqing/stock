@@ -28,7 +28,7 @@ sql = """
 select t1.trade_date, t1.stock_code, 
 t1.open, t1.high, t1.low, t1.close, 
 t2.adj_factor, 
-ts.rank_beta, ts.rank_mc, ts.rank_bp
+ts.rank_beta, ts.rank_mc, ts.rank_pb
 from tsdata.ttsdaily t1
 left join tsdata.ttsadjfactor t2
 on t1.stock_code = t2.stock_code
@@ -53,10 +53,10 @@ r = r.unstack()
 
 rank_beta = df.loc[:, 'rank_beta'].unstack()
 rank_mc = df.loc[:, 'rank_mc'].unstack()
-rank_bp = df.loc[:, 'rank_bp'].unstack()
+rank_pb = df.loc[:, 'rank_pb'].unstack()
 
 x = r.ewm(halflife=5).mean()
-x = tools.neutralize(x)
+# x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'ya')
+tools.factor_analyse(x_, y, 10, 'reversal')

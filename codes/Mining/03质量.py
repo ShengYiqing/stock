@@ -12,7 +12,7 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
+start_date = '20180901'
 end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -48,10 +48,10 @@ df = df.mean(1)
 df = df.unstack()
 df.index.name = 'trade_date'
 df.columns.name = 'stock_code'
-# df = tools.neutralize(df, ['mc', 'bp'])
+# df = tools.neutralize(df)
 
 x = df
 
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 21, 'quality')
+tools.factor_analyse(x_, y, 10, 'quality')

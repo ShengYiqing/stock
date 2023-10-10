@@ -94,22 +94,22 @@ new.fillna(0, inplace=True)
 
 is_trade = yiziban + suspend + new
 
-is_trade[CLOSE.isna()] = 1
 is_trade[is_trade>0] = 1
+is_trade[(r_a.isna() & r_o.isna() & r_c.isna()).iloc[:-1]] = np.nan
 
 is_trade = 1 - is_trade
 
-rank_mc = mc.rank(axis=1, pct=True)
-rank_amount = AMOUNT.ewm(halflife=60, min_periods=60).mean().rank(axis=1, pct=True)
-rank_price = CLOSE.rank(axis=1, pct=True)
+mc = mc
+amount = AMOUNT.ewm(halflife=60, min_periods=60).mean()
+price = CLOSE
 
 df = pd.concat({'r_a':r_a,  
                 'r_o':r_o, 
                 'r_c':r_c, 
                 'is_trade':is_trade,
-                'rank_price':rank_price,
-                'rank_amount':rank_amount,
-                'rank_mc':rank_mc,
+                'price':price,
+                'amount':amount,
+                'mc':mc,
                 }, axis=1)
 df = df.loc[df.index>=start_date]
 df = df.stack()

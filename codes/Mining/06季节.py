@@ -16,7 +16,7 @@ start_date = '20180101'
 end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql_y = tools.generate_sql_y_x([], start_date, end_date)
+sql_y = tools.generate_sql_y_x([], start_date, end_date, style_dic={'beta':0.666, 'mc':0.666, 'pb':0.666}, n=100)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
@@ -53,8 +53,9 @@ ud = (u == h) | (d == l)
 ud = ud.unstack().fillna(False)
 r[ud] = np.nan
 dic = {}
-for i in range(1, 6):
-    dic[i] = (6-i) * r.rolling(20, min_periods=5).mean().shift(240*i-20).stack()
+n = 10
+for i in range(1, 1+n):
+    dic[i] = (1+n-i) * r.rolling(30, min_periods=5).mean().shift(240*i-20).stack()
 seasonality = DataFrame(dic).mean(1).unstack()
 x = seasonality
 # x.index.name = 'trade_date'

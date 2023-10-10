@@ -39,6 +39,7 @@ print('seasonal_n_mean', seasonal_n_mean)
 factors = [
     # 'bp', 
     # 'quality',
+    'beta',
     'momentum', 
     'reversal', 
     'seasonality'
@@ -47,9 +48,10 @@ factors = [
 weight_sub = {
     # 'bp':0, 
     # 'quality': 0.01, 
-    # 'momentum': 0.03, 
-    # 'reversal': -0.03, 
-    # 'seasonality': 0.03,  
+    'beta': 0.02,
+    'momentum': 0.02, 
+    'reversal': -0.05, 
+    'seasonality': 0.02,  
     }
 
 # weight_sub = {}
@@ -191,8 +193,8 @@ plt.figure(figsize=(16,9))
 plt.figure(figsize=(16,9))
 x.corrwith(x.shift(), axis=1, method='spearman').cumsum().plot()
 
-x_quantile = DataFrame(x.rank(axis=1)).div(x.notna().sum(1), axis=0)
-num_group = 21
+x_quantile = x.rank(axis=1, pct=True)
+num_group = 10
 group_pos = {}
 for n in range(num_group):
     group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group))
