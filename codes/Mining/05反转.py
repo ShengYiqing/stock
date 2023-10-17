@@ -56,7 +56,7 @@ rank_mc = df.loc[:, 'rank_mc'].unstack()
 rank_pb = df.loc[:, 'rank_pb'].unstack()
 
 x = r.ewm(halflife=5).mean()
-# x = tools.neutralize(x)
+x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 10, 'reversal')

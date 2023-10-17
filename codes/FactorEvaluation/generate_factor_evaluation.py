@@ -85,6 +85,10 @@ if __name__ == '__main__':
         'reversal', 
         'momentum',  
         'seasonality',
+        'skew', 
+        'cpshl', 
+        'crhl', 
+        'crhls', 
         ]
 
     

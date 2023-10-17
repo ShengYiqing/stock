@@ -28,7 +28,6 @@ sql = """
 select t1.trade_date, t1.stock_code, 
 t1.high, t1.low, t1.close, 
 t2.adj_factor , t3.turnover_rate, 
-((t4.buy_sm_vol + t4.sell_sm_vol) / t1.vol) sm_vol_ratio, 
 tud.up_limit, tud.down_limit 
 from tsdata.ttsdaily t1
 left join tsdata.ttsadjfactor t2
@@ -37,9 +36,6 @@ and t1.trade_date = t2.trade_date
 left join tsdata.ttsdailybasic t3
 on t1.stock_code = t3.stock_code
 and t1.trade_date = t3.trade_date
-left join tsdata.ttsmoneyflow t4
-on t1.stock_code = t4.stock_code
-and t1.trade_date = t4.trade_date
 left join tsdata.ttsstklimit tud
 on t1.stock_code = tud.stock_code
 and t1.trade_date = tud.trade_date
@@ -52,7 +48,6 @@ c = df.loc[:, 'close']
 h = df.loc[:, 'high']
 l = df.loc[:, 'low']
 af = df.loc[:, 'adj_factor']
-sm = df.loc[:, 'sm_vol_ratio'].unstack()
 r = np.log(c * af).unstack().diff()
 
 h = df.loc[:, 'high']
@@ -70,23 +65,20 @@ hl = (np.log(h) - np.log(l)).unstack()
 
 w1 = hl
 w2 = tr
-w3 = sm
 
 w_dic = {
     'w1': w1, 
-    'w2': w2, 
-    'w3': w3, 
+    # 'w2': w2, 
     }
 
 q_dic = {
-    'w1': [0.05, 0.8], 
-    'w2': [0.05, 0.8], 
-    'w3': [0.2, 0.95], 
+    'w1': [0, 0.8], 
+    # 'w2': [0, 0.8], 
     }
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 
-n = 250
+n = 220
 dic = {}
 for trade_date in trade_dates:
     print(trade_date, n, q_dic)
@@ -104,4 +96,4 @@ x = DataFrame(dic).T
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 21, 'momentum')
+tools.factor_analyse(x_, y, 10, 'momentum')

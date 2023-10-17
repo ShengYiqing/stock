@@ -94,4 +94,4 @@ for q_list in q_lists:
     # x = tools.neutralize(x)
     x_ = DataFrame(x, index=y.index, columns=y.columns)
     x_[y.isna()] = np.nan
-    tools.factor_analyse(x_, y, 21, 'wrhls%s[%s,%s]'%(n, j, k))
+    tools.factor_analyse(x_, y, 10, 'wrhls%s[%s,%s]'%(n, j, k))

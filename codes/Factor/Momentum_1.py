@@ -24,17 +24,18 @@ from sqlalchemy.types import VARCHAR
 #%%
 def generate_factor(start_date, end_date):
     start_date_sql = tools.trade_date_shift(start_date, 250)
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306")
 
     sql = """
     select t1.trade_date, t1.stock_code, 
-    t1.close, t1.high, t1.low, t2.adj_factor, 
+    t1.high, t1.low, t1.close, 
+    t2.adj_factor , 
     tud.up_limit, tud.down_limit 
-    from ttsdaily t1
-    left join ttsadjfactor t2
+    from tsdata.ttsdaily t1
+    left join tsdata.ttsadjfactor t2
     on t1.stock_code = t2.stock_code
     and t1.trade_date = t2.trade_date
-    left join ttsstklimit tud
+    left join tsdata.ttsstklimit tud
     on t1.stock_code = tud.stock_code
     and t1.trade_date = tud.trade_date
     where t1.trade_date >= {start_date}
@@ -43,6 +44,8 @@ def generate_factor(start_date, end_date):
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     c = df.loc[:, 'close']
+    h = df.loc[:, 'high']
+    l = df.loc[:, 'low']
     af = df.loc[:, 'adj_factor']
     r = np.log(c * af).unstack().diff()
 
@@ -55,7 +58,25 @@ def generate_factor(start_date, end_date):
     ud = ud.unstack().fillna(False)
     r[ud] = np.nan
 
-    df = r.rolling(230, min_periods=60).mean().shift(20)
+    # tr = df.loc[:, 'turnover_rate'].unstack()
+
+    hl = (np.log(h) - np.log(l)).unstack()
+
+    w = hl
+    w_t = [0, 0.8]
+
+    trade_dates = tools.get_trade_cal(start_date, end_date)
+
+    n = 220
+    dic = {}
+    for trade_date in trade_dates:
+        print(trade_date)
+        r_tmp = r.loc[r.index<=trade_date].iloc[(-n):(-20)].dropna(axis=1, thresh=0.618*n)
+        w_tmp = w.loc[r_tmp.index, r_tmp.columns].rank(pct=True)
+        w_tmp = ((w_tmp>=w_t[0])&(w_tmp<=w_t[1])).astype(int)
+        dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
+
+    df = DataFrame(dic).T
     df = df.loc[df.index>=start_date]
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

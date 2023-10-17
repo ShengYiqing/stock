@@ -21,22 +21,27 @@ def single_factor_analysis(factor_name, start_date, end_date):
     x = df.loc[:, factor_name].unstack()
     y = df.loc[:, 'r_d'].unstack()
     
-    tools.factor_analyse(x, y, 21, factor_name)
+    tools.factor_analyse(x, y, 10, factor_name)
     
     
 if __name__ == '__main__':
     factors = [
-        # 'bp', 
+        # 'value', 
         # 'quality', 
-        'momentum', 
+        'beta',
         'reversal', 
-        'seasonality'
+        'momentum',  
+        'seasonality',
+        'skew', 
+        'cpshl', 
+        'crhl', 
+        'crhls', 
         ]
     # factors = [
     #     'mc', 'bp', 'betastyle', 'beta', 'quality', 'reversal', 'momentum']
     for factor_name in factors:
         start_date = '20180101'
-        end_date = '20230830'
+        end_date = '20230930'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)
         

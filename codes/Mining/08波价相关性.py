@@ -21,24 +21,16 @@ df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
 stock_codes = list(y.columns)
 #%%
-start_date_sql = tools.trade_date_shift(start_date, 250)
+start_date_sql = tools.trade_date_shift(start_date, 60)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.close, t1.high, t1.low, t2.adj_factor, 
-tud.up_limit, tud.down_limit, 
-ts.rank_beta, ts.rank_mc, ts.rank_pb
+t1.close, t1.high, t1.low, t1.amount, t2.adj_factor
 from ttsdaily t1
 left join ttsadjfactor t2
 on t1.stock_code = t2.stock_code
 and t1.trade_date = t2.trade_date
-left join ttsstklimit tud
-on t1.stock_code = tud.stock_code
-and t1.trade_date = tud.trade_date
-left join style.tdailystyle ts
-on t1.stock_code = ts.stock_code
-and t1.trade_date = ts.trade_date
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
 """
@@ -46,29 +38,15 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 c = df.loc[:, 'close']
 af = df.loc[:, 'adj_factor']
-r = np.log(c * af).unstack().diff()
+p = np.log(c * af).unstack()
+hl = np.log(df.loc[:, 'high'] / df.loc[:, 'low']).unstack()
 
-h = df.loc[:, 'high']
-l = df.loc[:, 'low']
-u = df.loc[:, 'up_limit']
-d = df.loc[:, 'down_limit']
+n = 5
+x = p.shift().ewm(halflife=n, min_periods=5).corr(hl)
 
-ud = (u == h) | (d == l)
-ud = ud.unstack().fillna(False)
-r[ud] = np.nan
-
-momentum = r.rolling(200, min_periods=60).mean().shift(20)
-n = 3
-dic = {}
-for i in range(1, 1+n):
-    dic[i] = (1+n-i) * r.rolling(20, min_periods=5).mean().shift(240*i-20).stack()
-seasonality = DataFrame(dic).mean(1).unstack()
-
-x = DataFrame({'m':momentum.stack(), 's':seasonality.stack()}).mean(1).unstack()
-x = x
 # x.index.name = 'trade_date'
 # x.columns.name = 'stock_code'
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'momentum')
+tools.factor_analyse(x_, y, 10, 'cphl')

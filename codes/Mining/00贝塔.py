@@ -16,7 +16,6 @@ start_date = '20180901'
 end_date = '20230930'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql_y = tools.generate_sql_y_x([], start_date, end_date, white_dic=None, style_dic=None, n_ind=300, n=30000)
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
