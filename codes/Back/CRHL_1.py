@@ -23,13 +23,12 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 60)
+    start_date_sql = tools.trade_date_shift(start_date, 250)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
 
     sql = """
     select t1.trade_date, t1.stock_code, 
-    t1.high, t1.low, t1.close, 
-    t2.adj_factor 
+    t1.close, t1.high, t1.low, t1.amount, t2.adj_factor
     from ttsdaily t1
     left join ttsadjfactor t2
     on t1.stock_code = t2.stock_code
@@ -40,18 +39,12 @@ def generate_factor(start_date, end_date):
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     c = df.loc[:, 'close']
-    h = df.loc[:, 'high']
-    l = df.loc[:, 'low']
     af = df.loc[:, 'adj_factor']
-    r = np.log(c * af).unstack().diff()
-    hl = (np.log(h) - np.log(l)).unstack()
-    w = hl - hl.ewm(halflife=1).mean()
-    n = 5
-    df = r.ewm(halflife=n).corr(w)
-    # df = df * r.ewm(halflife=n).std()
-    # df = df / w.ewm(halflife=n).std()
-    df = df.replace(-np.inf, np.nan).replace(np.inf, np.nan)
-    
+    p = np.log(c * af).unstack()
+    hl = np.log(df.loc[:, 'high'] / df.loc[:, 'low']).unstack()
+    r = p.diff()
+    n = 250
+    df = r.rolling(n, min_periods=60).corr(hl)
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)

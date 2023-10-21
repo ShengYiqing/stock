@@ -10,7 +10,6 @@ factors = [
     'seasonality',
     'skew', 
     'cpshl', 
-    'crhl', 
     'crhls', 
     ]
 c = {}

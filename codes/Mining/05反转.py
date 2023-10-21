@@ -12,8 +12,8 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
-end_date = '20230830'
+start_date = '20230101'
+end_date = '20230930'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
@@ -45,18 +45,14 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date,
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 
 c = df.loc[:, 'close']
-
+o = df.loc[:, 'open']
 adj_factor = df.loc[:, 'adj_factor']
-r = np.log(c * adj_factor).groupby('stock_code').diff()
+c = np.log(c * adj_factor).unstack()
+o = np.log(o * adj_factor).unstack()
 
-r = r.unstack()
-
-rank_beta = df.loc[:, 'rank_beta'].unstack()
-rank_mc = df.loc[:, 'rank_mc'].unstack()
-rank_pb = df.loc[:, 'rank_pb'].unstack()
-
-x = r.ewm(halflife=5).mean()
-x = tools.neutralize(x)
+# r = c.diff()
+r = c - o
+x = r.ewm(halflife=1).mean()
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 10, 'reversal')

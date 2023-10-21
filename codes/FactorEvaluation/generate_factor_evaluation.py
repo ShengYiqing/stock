@@ -37,39 +37,39 @@ def f(factor_name, df, start_date, end_date):
     df_ic.to_sql('tdailyic', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 
-    e2_d = (y_d - x.mul(ic_d, axis=0)) ** 2
+    # e2_d = (y_d - x.mul(ic_d, axis=0)) ** 2
     
-    h_d = x.corrwith(e2_d, axis=1, method='spearman') ** 2
+    # h_d = x.corrwith(e2_d, axis=1, method='spearman') ** 2
     
-    y_r_d = tools.standardize(y_d.rank(1))
-    x_r = tools.standardize(x.rank(1))
+    # y_r_d = tools.standardize(y_d.rank(1))
+    # x_r = tools.standardize(x.rank(1))
     
-    ic_r_d = x_r.corrwith(y_r_d, axis=1)
+    # ic_r_d = x_r.corrwith(y_r_d, axis=1)
     
-    e2_r_d = (y_r_d - x_r.mul(ic_r_d, axis=0)) ** 2
+    # e2_r_d = (y_r_d - x_r.mul(ic_r_d, axis=0)) ** 2
     
-    h_r_d = x_r.corrwith(e2_r_d, axis=1, method='spearman') ** 2
+    # h_r_d = x_r.corrwith(e2_r_d, axis=1, method='spearman') ** 2
     
-    df_h = DataFrame({'H_D':h_d, 'RANK_H_D':h_r_d, })
-    df_h = df_h.loc[df_h.index>=start_date, :]
-    df_h.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df_h.loc[:, 'FACTOR_NAME'] = factor_name
+    # df_h = DataFrame({'H_D':h_d, 'RANK_H_D':h_r_d, })
+    # df_h = df_h.loc[df_h.index>=start_date, :]
+    # df_h.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    # df_h.loc[:, 'FACTOR_NAME'] = factor_name
 
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
-    df_h.to_sql('tdailyh', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    # engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
+    # df_h.to_sql('tdailyh', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
     
-    tr_d = x.corrwith(x.shift(), axis=1)
+    # tr_d = x.corrwith(x.shift(), axis=1)
     
-    tr_r_d = x.corrwith(x.shift(), axis=1, method='spearman')
+    # tr_r_d = x.corrwith(x.shift(), axis=1, method='spearman')
     
-    df_tr = DataFrame({'TR_D':tr_d, 'RANK_TR_D':tr_r_d, })
-    df_tr = df_tr.loc[df_tr.index>=start_date, :]
-    df_tr.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
-    df_tr.loc[:, 'FACTOR_NAME'] = factor_name
+    # df_tr = DataFrame({'TR_D':tr_d, 'RANK_TR_D':tr_r_d, })
+    # df_tr = df_tr.loc[df_tr.index>=start_date, :]
+    # df_tr.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    # df_tr.loc[:, 'FACTOR_NAME'] = factor_name
 
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
-    df_tr.to_sql('tdailytr', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    # engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
+    # df_tr.to_sql('tdailytr', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 
 
@@ -85,10 +85,10 @@ if __name__ == '__main__':
         'reversal', 
         'momentum',  
         'seasonality',
-        'skew', 
+        'skew',  
         'cpshl', 
-        'crhl', 
         'crhls', 
+        'jump', 
         ]
 
     

@@ -26,22 +26,21 @@ def single_factor_analysis(factor_name, start_date, end_date):
     
 if __name__ == '__main__':
     factors = [
-        # 'value', 
-        # 'quality', 
+        'bp', 
+        'mc', 
         'beta',
         'reversal', 
         'momentum',  
         'seasonality',
         'skew', 
         'cpshl', 
-        'crhl', 
         'crhls', 
         ]
     # factors = [
     #     'mc', 'bp', 'betastyle', 'beta', 'quality', 'reversal', 'momentum']
     for factor_name in factors:
-        start_date = '20180101'
-        end_date = '20230930'
+        start_date = '20230101'
+        end_date = '20231030'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)
         

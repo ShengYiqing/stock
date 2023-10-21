@@ -34,18 +34,20 @@ factors = [
     'skew', 
     'cpshl', 
     'crhls', 
+    # 'jump', 
     ]
 
 weight_sub = {
     # 'bp':0, 
     # 'quality': 0.01, 
     'beta': 0.01,
-    'momentum': 0.01, 
     'reversal': -0.01, 
+    'momentum': 0.01, 
     'seasonality': 0.01, 
     'skew': 0.01, 
     'cpshl': -0.01, 
     'crhls': 0.01,
+    # 'jump': 0.01, 
     }
 
 # weight_sub = {}
@@ -54,7 +56,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20230101'
+start_date = '20180101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -66,7 +68,7 @@ print('factors: ', factors)
 print('weight_sub: ', weight_sub)
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
-start_date_ic = tools.trade_date_shift(start_date, 1500)
+start_date_ic = tools.trade_date_shift(start_date, 1250)
 
 #读ic
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")

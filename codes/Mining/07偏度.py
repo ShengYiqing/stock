@@ -51,7 +51,7 @@ mu3 = (r**3).ewm(halflife=n, min_periods=5).mean()
 sigma = r.ewm(halflife=n, min_periods=5).var()
 
 x = (mu3 - 3 * mu2 * mu1 + 2 * mu1**3) / sigma**1.5
-# x = r.rolling(5).skew()
+# x = r.rolling(20, min_periods=1).skew()
 # x.index.name = 'trade_date'
 # x.columns.name = 'stock_code'
 # x = tools.neutralize(x)

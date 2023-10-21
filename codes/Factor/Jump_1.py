@@ -23,29 +23,32 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 60)
-    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
-    
+    n = 20
+    start_date_sql = tools.trade_date_shift(start_date, n)
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     sql = """
-    select t1.STOCK_CODE, t1.TRADE_DATE, t1.OPEN, t1.CLOSE, t2.ADJ_FACTOR from ttsdaily t1
-    left join ttsadjfactor t2
-    on t1.STOCK_CODE = t2.STOCK_CODE
-    and t1.TRADE_DATE = t2.TRADE_DATE
+    select t1.trade_date, t1.stock_code, 
+    t1.open, t1.high, t1.low, t1.close, 
+    t2.adj_factor
+    from tsdata.ttsdaily t1
+    left join tsdata.ttsadjfactor t2
+    on t1.stock_code = t2.stock_code
+    and t1.trade_date = t2.trade_date
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
-    df = pd.read_sql(sql, engine)
-    OPEN = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'OPEN']
-    CLOSE = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'CLOSE']
-    ADJ_FACTOR = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'ADJ_FACTOR']
-    ADJ_FACTOR = ADJ_FACTOR.unstack()
-    CLOSE = CLOSE.unstack()
-    CLOSE = np.log(CLOSE * ADJ_FACTOR)
-    OPEN = OPEN.unstack()
-    OPEN = np.log(OPEN * ADJ_FACTOR)
-    r_jump = OPEN - CLOSE.shift()
-    df = r_jump.ewm(halflife=5).mean()
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+
+    c = df.loc[:, 'close']
+    o = df.loc[:, 'open']
+    adj_factor = df.loc[:, 'adj_factor']
+    c = np.log(c * adj_factor).unstack()
+    o = np.log(o * adj_factor).unstack()
+
+    # r = c.diff()
+    r = o - c.shift()
+    df = r.ewm(halflife=1).mean()
     df = df.loc[df.index>=start_date]
     df.replace(np.inf, np.nan, inplace=True)
     df.replace(-np.inf, np.nan, inplace=True)
