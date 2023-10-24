@@ -17,36 +17,36 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 import statsmodels.api as sm
-halflife_mean = 250
-halflife_cov = 750
+halflife_mean = 60
+halflife_cov = 250
 
 lambda_i = 0.001
 print('halflife_mean', halflife_mean)
 print('halflife_cov', halflife_cov)
 
 factors = [
-    # 'value', 
-    # 'quality', 
-    'beta',
+    # 'bp', 
+    # 'mc', 
+    # 'beta',
     'reversal', 
     'momentum',  
     'seasonality',
     'skew', 
-    'cpshl', 
-    'crhls', 
+    # 'cpshl', 
+    # 'crhls', 
     # 'jump', 
     ]
 
 weight_sub = {
     # 'bp':0, 
-    # 'quality': 0.01, 
-    'beta': 0.01,
+    # 'mc': 0, 
+    # 'beta': 0.01,
     'reversal': -0.01, 
     'momentum': 0.01, 
     'seasonality': 0.01, 
     'skew': 0.01, 
-    'cpshl': -0.01, 
-    'crhls': 0.01,
+    # 'cpshl': -0.01, 
+    # 'crhls': 0.01,
     # 'jump': 0.01, 
     }
 
@@ -111,4 +111,4 @@ for factor in factors:
     # df_x = df_x.rank(axis=1, pct=True)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
-tools.factor_analyse(x, y, 10, 'combine')
+tools.factor_analyse(x, y, 5, 'combine')

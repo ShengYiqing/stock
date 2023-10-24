@@ -12,7 +12,7 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
+start_date = '20180901'
 end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -65,7 +65,7 @@ w = hl #- hl.ewm(halflife=5).mean()
 
 trade_dates = tools.get_trade_cal(start_date, end_date)
 
-n = 250
+n = 220
 n_q = 20
 q_lists = [
     [i/n_q, (1+i)/n_q] for i in range(n_q)
@@ -94,4 +94,4 @@ for q_list in q_lists:
     # x = tools.neutralize(x)
     x_ = DataFrame(x, index=y.index, columns=y.columns)
     x_[y.isna()] = np.nan
-    tools.factor_analyse(x_, y, 10, 'wrhls%s[%s,%s]'%(n, j, k))
+    tools.factor_analyse(x_, y, 5, 'wrhls%s[%s,%s]'%(n, j, k))

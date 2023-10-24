@@ -43,10 +43,10 @@ hl = np.log(df.loc[:, 'high'] / df.loc[:, 'low']).unstack()
 r = p.diff()
 n = 5
 x = r.ewm(halflife=n, min_periods=5).corr(hl.shift()).replace(-np.inf, np.nan)
-x = r.rolling(250, min_periods=60).corr(hl).replace(-np.inf, np.nan)
+# x = r.rolling(250, min_periods=60).corr(hl).replace(-np.inf, np.nan)
 # x.index.name = 'trade_date'
 # x.columns.name = 'stock_code'
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'crhl')
+tools.factor_analyse(x_, y, 5, 'crhl')

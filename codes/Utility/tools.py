@@ -140,8 +140,8 @@ def factor_analyse(x, y, num_group, factor_name):
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
                      is_trade=True, is_industry=True, 
                      white_dic={'price': 5, 'amount': 1e5}, 
-                     style_dic={'rank_mc':0.8, 'rank_pb':0.2, 'rank_pe':0.05, 'rank_roe':0.05}, 
-                     n_ind=5, n=50):
+                     style_dic={'rank_pb':0.2, 'rank_pe':0.05, 'rank_roe':0.05}, 
+                     n_ind=3, n=50):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
     t1.r_{label_type} r_d, 

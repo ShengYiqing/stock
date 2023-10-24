@@ -58,25 +58,25 @@ def generate_factor(start_date, end_date):
     ud = ud.unstack().fillna(False)
     r[ud] = np.nan
 
-    # tr = df.loc[:, 'turnover_rate'].unstack()
+    # # tr = df.loc[:, 'turnover_rate'].unstack()
 
-    hl = (np.log(h) - np.log(l)).unstack()
+    # hl = (np.log(h) - np.log(l)).unstack()
 
-    w = hl
-    w_t = [0, 0.8]
+    # w = hl
+    # w_t = [0, 0.8]
 
-    trade_dates = tools.get_trade_cal(start_date, end_date)
+    # trade_dates = tools.get_trade_cal(start_date, end_date)
 
-    n = 220
-    dic = {}
-    for trade_date in trade_dates:
-        print(trade_date)
-        r_tmp = r.loc[r.index<=trade_date].iloc[(-n):(-20)].dropna(axis=1, thresh=0.618*n)
-        w_tmp = w.loc[r_tmp.index, r_tmp.columns].rank(pct=True)
-        w_tmp = ((w_tmp>=w_t[0])&(w_tmp<=w_t[1])).astype(int)
-        dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
+    # n = 220
+    # dic = {}
+    # for trade_date in trade_dates:
+    #     print(trade_date)
+    #     r_tmp = r.loc[r.index<=trade_date].iloc[(-n):(-20)].dropna(axis=1, thresh=0.618*n)
+    #     w_tmp = w.loc[r_tmp.index, r_tmp.columns].rank(pct=True)
+    #     w_tmp = ((w_tmp>=w_t[0])&(w_tmp<=w_t[1])).astype(int)
+    #     dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
 
-    df = DataFrame(dic).T
+    df = r.rolling(200, min_periods=60).mean()
     df = df.loc[df.index>=start_date]
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

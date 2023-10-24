@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    n = 60
+    n = 5
     start_date_sql = tools.trade_date_shift(start_date, n)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     sql = """

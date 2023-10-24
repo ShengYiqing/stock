@@ -38,20 +38,20 @@ df = pd.read_sql(sql, engine)
 df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
 df = df.groupby('trade_date').rank(pct=True)
 for factor in factor_dic.keys():
-    # x = df.loc[:, factor].unstack()
-    # x_ = DataFrame(x, index=y.index, columns=y.columns)
-    # x_[y.isna()] = np.nan
-    # tools.factor_analyse(x_, y, 21, factor)
+    x = df.loc[:, factor].unstack()
+    x_ = DataFrame(x, index=y.index, columns=y.columns)
+    x_[y.isna()] = np.nan
+    tools.factor_analyse(x_, y, 5, factor)
 
     df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
 df = df.mean(1)
 df = df.unstack()
 df.index.name = 'trade_date'
 df.columns.name = 'stock_code'
-# df = tools.neutralize(df)
+df = tools.neutralize(df)
 
 x = df
 
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'quality')
+tools.factor_analyse(x_, y, 5, 'quality')

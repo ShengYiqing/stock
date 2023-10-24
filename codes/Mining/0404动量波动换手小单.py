@@ -96,4 +96,4 @@ x = DataFrame(dic).T
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'momentum')
+tools.factor_analyse(x_, y, 5, 'momentum')

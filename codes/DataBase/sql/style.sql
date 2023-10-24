@@ -15,7 +15,7 @@ on tl.trade_date = ts.trade_date
 and tl.stock_code = ts.stock_code
 where tl.trade_date = '20231012'
 and tl.amount >= 100000 and tl.price >= 5
-and ts.rank_mc >= 0.8 and ts.rank_pb >= 0.2 and ts.rank_pe >= 0.05 and ts.rank_roe >= 0.05
+and ts.rank_pb >= 0.2 and ts.rank_pe >= 0.05 and ts.rank_roe >= 0.05
 and ti.l3_name in (
 '快递', 
 '航空运输', 
@@ -32,7 +32,7 @@ and ti.l3_name in (
 '烘焙食品', '熟食', '零食', '白酒Ⅲ', '调味发酵品Ⅲ', '其他酒类', '啤酒', '保健品', '肉制品', '预加工食品', '乳品', '软饮料')
 ) t
 ) t
-where t.lead_ind <= 5
+where t.lead_ind <= 3
 ) t
 where t.lead_stock <= 50
 order by l1_name, l2_name, l3_name, lead_stock

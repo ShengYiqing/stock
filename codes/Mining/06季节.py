@@ -53,7 +53,7 @@ ud = (u == h) | (d == l)
 ud = ud.unstack().fillna(False)
 r[ud] = np.nan
 dic = {}
-n = 5
+n = 3
 for i in range(1, 1+n):
     dic[i] = (1+n-i) * r.rolling(30, min_periods=5).mean().shift(240*i-20).stack()
 seasonality = DataFrame(dic).mean(1).unstack()
@@ -63,4 +63,4 @@ x = seasonality
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'seasonality')
+tools.factor_analyse(x_, y, 5, 'seasonality')
