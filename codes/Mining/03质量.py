@@ -12,7 +12,7 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180901'
+start_date = '20120901'
 end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -31,7 +31,7 @@ factor_dic = {'operation':1,
               'growth':1, 
               'stability':1, 
               }
-sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, is_industry=False)
+sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 df = pd.read_sql(sql, engine)

@@ -23,7 +23,7 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    start_date_sql = tools.trade_date_shift(start_date, 250)
+    start_date_sql = tools.trade_date_shift(start_date, 770)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306")
 
     sql = """
@@ -58,25 +58,7 @@ def generate_factor(start_date, end_date):
     ud = ud.unstack().fillna(False)
     r[ud] = np.nan
 
-    # # tr = df.loc[:, 'turnover_rate'].unstack()
-
-    # hl = (np.log(h) - np.log(l)).unstack()
-
-    # w = hl
-    # w_t = [0, 0.8]
-
-    # trade_dates = tools.get_trade_cal(start_date, end_date)
-
-    # n = 220
-    # dic = {}
-    # for trade_date in trade_dates:
-    #     print(trade_date)
-    #     r_tmp = r.loc[r.index<=trade_date].iloc[(-n):(-20)].dropna(axis=1, thresh=0.618*n)
-    #     w_tmp = w.loc[r_tmp.index, r_tmp.columns].rank(pct=True)
-    #     w_tmp = ((w_tmp>=w_t[0])&(w_tmp<=w_t[1])).astype(int)
-    #     dic[trade_date] = (r_tmp * w_tmp).mean().dropna()
-
-    df = r.rolling(200, min_periods=60).mean()
+    df = r.rolling(250, min_periods=60).sum().shift(20)
     df = df.loc[df.index>=start_date]
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

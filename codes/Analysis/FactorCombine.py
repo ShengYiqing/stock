@@ -17,37 +17,33 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 import statsmodels.api as sm
-halflife_mean = 60
-halflife_cov = 250
+halflife_mean = 250
+halflife_cov = 750
 
 lambda_i = 0.001
 print('halflife_mean', halflife_mean)
 print('halflife_cov', halflife_cov)
 
 factors = [
-    # 'bp', 
-    # 'mc', 
-    # 'beta',
+    'beta',
+    'jump', 
     'reversal', 
     'momentum',  
     'seasonality',
-    'skew', 
-    # 'cpshl', 
-    # 'crhls', 
-    # 'jump', 
+    'skew',
+    'crhl', 
+    'cphl', 
     ]
 
 weight_sub = {
-    # 'bp':0, 
-    # 'mc': 0, 
-    # 'beta': 0.01,
-    'reversal': -0.01, 
-    'momentum': 0.01, 
-    'seasonality': 0.01, 
-    'skew': 0.01, 
-    # 'cpshl': -0.01, 
-    # 'crhls': 0.01,
-    # 'jump': 0.01, 
+    'beta': 0.02,
+    'jump': 0.01, 
+    'reversal': -0.02, 
+    'momentum': 0.02,  
+    'seasonality': 0.015,
+    'skew': 0.01,
+    'crhl': -0.01, 
+    'cphl': -0.01, 
     }
 
 # weight_sub = {}
@@ -56,7 +52,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20180101'
+start_date = '20230101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -75,7 +71,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql_ic = """
 select trade_date, factor_name, 
-(ic_d + rank_ic_d) / 2 as ic
+rank_ic_d ic
 from tdailyic
 where factor_name in {factor_names}
 and trade_date >= {start_date}
@@ -107,8 +103,8 @@ y = df.loc[:, 'r_d'].unstack()
 x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
-    df_x = tools.standardize(tools.winsorize(df_x))
-    # df_x = df_x.rank(axis=1, pct=True)
+    df_x = df_x.rank(axis=1, pct=True)
+    df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
 tools.factor_analyse(x, y, 5, 'combine')

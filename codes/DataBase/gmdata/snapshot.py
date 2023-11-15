@@ -76,7 +76,9 @@ if __name__ == '__main__':
     # date = '20230601'
     start_date = date
     end_date = date
-    trade_cal = tools.get_trade_cal(start_date=date, end_date=date)
+    # start_date = '20231030'
+    # end_date = '20231104'
+    trade_cal = tools.get_trade_cal(start_date, end_date)
     if len(trade_cal) == 0:
         sys.exit()
     file = open("%s/gm.txt"%gc.PROJECT_PATH)

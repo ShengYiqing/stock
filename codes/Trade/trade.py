@@ -21,23 +21,22 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20231023'
+trade_date = '20231115'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['601012', '000988', '002027', '600276'
+buy_list = [
             ]
 
-sell_list= ['002415', '002517', '300033', '688041'
+sell_list= [
             ]
 
 position.extend(buy_list)
 position = list(set(position) - set(sell_list))
-# position = ['300308', '002230', '601995', '000988', '600763', 
-#             '600570', '603392', '688012', '002517', '603039', 
-#             '300059', '002568', '300033', '300418', '603986', 
-#             '300496', '688041', '603019']
+position = ['688036', '002568', '002027', '300866', '000858', 
+            '600398', '600809', '603605', 
+            ]
 with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
     pickle.dump(position, f)
 
@@ -48,27 +47,25 @@ print('----持股数量----')
 print('持股数量: ', len(position))
 
 factors = [
-    # 'value', 
-    # 'quality', 
-    # 'beta',
+    'beta',
+    'jump', 
     'reversal', 
     'momentum',  
     'seasonality',
-    'skew', 
-    # 'cpshl', 
-    # 'crhls', 
+    'skew',
+    'crhl', 
+    'cphl', 
     ]
 
 weight_sub = {
-    # 'bp':0, 
-    # 'quality': 0.01, 
-    # 'beta': 0.01,
-    'reversal': -0.01, 
-    'momentum': 0.01, 
-    'seasonality': 0.01, 
-    'skew': 0.01, 
-    # 'cpshl': -0.01, 
-    # 'crhls': 0.01,
+    'beta': 0.02,
+    'jump': 0.01, 
+    'reversal': -0.02, 
+    'momentum': 0.02,  
+    'seasonality': 0.015,
+    'skew': 0.01,
+    'crhl': -0.01, 
+    'cphl': -0.01, 
     }
 
 for factor in factors:
@@ -119,7 +116,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql_ic = """
 select trade_date, factor_name, 
-(ic_d+rank_ic_d)/2 as ic
+rank_ic_d ic
 from tdailyic
 where factor_name in {factor_names}
 and trade_date >= {start_date}
@@ -145,7 +142,8 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
 df.loc[:, 'mc'] = tools.standardize(tools.winsorize(df.loc[:, 'mc']))
 for factor in factors:
-    df.loc[:, factor] = tools.standardize(tools.winsorize(df.loc[:, factor]))
+    df.loc[:, factor] = tools.standardize(df.loc[:, factor].rank(pct=True))
+    
 y = df.loc[:, 'r_d'].unstack()
 
 x = DataFrame(dtype='float64')

@@ -56,7 +56,9 @@ and index_name = '沪深300'
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
-beta = (r.ewm(halflife=60, min_periods=60).corr(r_m) * r.ewm(halflife=60, min_periods=60).std()).div(r_m.ewm(halflife=60, min_periods=60).std(), axis=0)
+sxy = r.rolling(20, min_periods=int(0.618*20)).cov(r_m)
+sxx = r_m.rolling(20, min_periods=int(0.618*20)).var()
+beta = sxy.div(sxx, axis=0).replace(-np.inf, np.nan).replace(np.inf, np.nan)
 
 rank_beta = beta.rank(axis=1, pct=True)
 rank_mc = mc.rank(axis=1, pct=True)

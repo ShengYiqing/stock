@@ -12,6 +12,7 @@ factors = [
     'cpshl', 
     'crhls', 
     ]
+factors = ['mc', 'bp']
 c = {}
 
 for i in range(len(factors)):

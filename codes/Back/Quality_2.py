@@ -23,48 +23,45 @@ from sqlalchemy.types import VARCHAR
 
 #%%
 def generate_factor(start_date, end_date):
-    formula = """
-    3*tfactorfjyzcl.preprocessed_factor_value
-    +2*tfactorfjyzcld.preprocessed_factor_value
-    -1*tfactorfjyzcls.preprocessed_factor_value
-    -3*tfactorfjrfzl.preprocessed_factor_value
-    -2*tfactorfjrfzld.preprocessed_factor_value
-    -1*tfactorfjrfzls.preprocessed_factor_value
-    -3*tfactorfyszkl.preprocessed_factor_value
-    -2*tfactorfyszkld.preprocessed_factor_value
-    -1*tfactorfyszkls.preprocessed_factor_value
-    +3*tfactorfzzl.preprocessed_factor_value
-    +2*tfactorfzzld.preprocessed_factor_value
-    -1*tfactorfzzls.preprocessed_factor_value
-    +3*tfactorfmll.preprocessed_factor_value
-    +2*tfactorfmlld.preprocessed_factor_value
-    -1*tfactorfmlls.preprocessed_factor_value
-    +3*tfactorfhxlrl.preprocessed_factor_value
-    +2*tfactorfhxlrld.preprocessed_factor_value
-    -1*tfactorfhxlrls.preprocessed_factor_value
-    +3*tfactorfhxfyl.preprocessed_factor_value
-    +2*tfactorfhxfyld.preprocessed_factor_value
-    -1*tfactorfhxfyls.preprocessed_factor_value
-    +3*tfactorfzhsyl.preprocessed_factor_value
-    +2*tfactorfzhsyld.preprocessed_factor_value
-    -1*tfactorfzhsyls.preprocessed_factor_value
-    +3*tfactorfjyxjlll.preprocessed_factor_value
-    +2*tfactorfjyxjllld.preprocessed_factor_value
-    -1*tfactorfjyxjllls.preprocessed_factor_value"""
-    factor = tools.generate_high_order_factor(formula, start_date, end_date)
-    
-    factor = factor.replace(0, np.nan)
-    factor = factor.replace(np.inf, np.nan)
-    factor = factor.replace(-np.inf, np.nan)
-    factor.index.name = 'trade_date'
-    factor.columns.name = 'stock_code'
-    
-    factor_p = tools.standardize(tools.winsorize(factor))
-    df_new = pd.concat([factor, factor_p], axis=1, keys=['FACTOR_VALUE', 'PREPROCESSED_FACTOR_VALUE'])
-    df_new = df_new.stack()
-    df_new.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
-    df_new.to_sql('tfactorquality', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    try:
+        sql = """
+        CREATE TABLE `factor`.`tfactorquality` (
+          `REC_CREATE_TIME` VARCHAR(14) NULL,
+          `TRADE_DATE` VARCHAR(8) NOT NULL,
+          `STOCK_CODE` VARCHAR(18) NOT NULL,
+          `FACTOR_VALUE` DOUBLE NULL,
+          PRIMARY KEY (`TRADE_DATE`, `STOCK_CODE`))
+        """
+        with engine.connect() as con:
+            con.execute(sql)
+    except:
+        pass
+    factor_dic = {'operation':1, 
+                  'gross':1, 
+                  'core':1, 
+                  'profitability':1, 
+                  'cash':1, 
+                  'growth':1, 
+                  'stability':1, 
+                  }
+    sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, is_trade=False, is_industry=False, white_dic=None, n=None)
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
+
+    df = pd.read_sql(sql, engine)
+    df = df.set_index(['trade_date', 'stock_code']).loc[:, factor_dic.keys()]
+    df = df.groupby('trade_date').rank(pct=True)
+    for factor in factor_dic.keys():
+        df.loc[:, factor] = df.loc[:, factor] * factor_dic[factor]
+    df = df.mean(1)
+    df = df.unstack()
+    df.index.name = 'trade_date'
+    df.columns.name = 'stock_code'
+    df = tools.neutralize(df)
+    df = DataFrame({'factor_value':df.stack()})
+    df.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+    engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factor?charset=utf8")
+    df.to_sql('tfactorquality', engine, schema='factor', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 #%%
 if __name__ == '__main__':

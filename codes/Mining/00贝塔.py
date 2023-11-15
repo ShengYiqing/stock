@@ -12,10 +12,11 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20120901'
+start_date = '20180901'
 end_date = '20230930'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
+# sql_y = tools.generate_sql_y_x([], start_date, end_date, is_industry=False, n_ind=3000, n=30000)
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
@@ -53,8 +54,15 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date)
 close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
-for n in [1, 5, 20, 60, 250]:
-    x = (r.ewm(halflife=n, min_periods=60).corr(r_m) * r.ewm(halflife=n, min_periods=60).std()).div(r_m.ewm(halflife=n, min_periods=60).std(), axis=0)
+for n in [5, 20, 60, 250]:
+    sxy = r.rolling(n, min_periods=int(0.618*n)).cov(r_m)
+    sxx = r_m.rolling(n, min_periods=int(0.618*n)).var()
+    # sxy = r.ewm(halflife=n, min_periods=int(0.618*n)).cov(r_m)
+    # sxx = r_m.ewm(halflife=n, min_periods=int(0.618*n)).var()
+    cxy = r.rolling(n, min_periods=int(0.618*n)).corr(r_m)
+    x = sxy.div(sxx, axis=0).replace(-np.inf, np.nan).replace(np.inf, np.nan)
+    
+    # x = cxy
     x_ = DataFrame(x, index=y.index, columns=y.columns)
     x_[y.isna()] = np.nan
-    tools.factor_analyse(x_, y, 5, 'beta_%s'%n)
+    tools.factor_analyse(x_, y, 10, 'beta_%s'%n)

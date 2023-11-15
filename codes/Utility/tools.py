@@ -139,9 +139,11 @@ def factor_analyse(x, y, num_group, factor_name):
     
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
                      is_trade=True, is_industry=True, 
-                     white_dic={'price': 5, 'amount': 1e5}, 
-                     style_dic={'rank_pb':0.2, 'rank_pe':0.05, 'rank_roe':0.05}, 
-                     n_ind=3, n=50):
+                     white_dic={'price': 5, 'amount': 5e4}, 
+                       # style_dic=None, 
+                       style_dic={'rank_pb':0.2}, 
+                     n_ind=3,
+                     n=50):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
     t1.r_{label_type} r_d, 
@@ -282,7 +284,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3'):
+def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3', ret_type='alpha'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
@@ -343,11 +345,14 @@ def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3'):
                 X.loc[:, factor] = winsorize(X.loc[:, factor])
             
             y = winsorize(data.loc[:, 'y'])
-            # W = DataFrame(np.diag(data.loc[:, ['mc', 'bp']].rank(pct=True).mean(1)), index=y.index, columns=y.index)
-            # y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
-            y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
-            res = standardize(winsorize(y - y_predict))
-            return res
+            W = DataFrame(np.diag(data.loc[:, 'mc']), index=y.index, columns=y.index)
+            y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
+            # y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
+            if ret_type == 'alpha':
+                ret = standardize(winsorize(y - y_predict))
+            elif ret_type == 'beta':
+                ret = standardize(winsorize(y_predict))
+            return ret
         x_n = data.groupby('trade_date', as_index=False).apply(g).reset_index(0, drop=True)
 
         return x_n.unstack()

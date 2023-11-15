@@ -56,8 +56,8 @@ def generate_factor(start_date, end_date):
     r[ud] = np.nan
     dic = {}
     for i in range(1, 4):
-        dic[i] = (4-i) * r.rolling(30, min_periods=5).mean().shift(240*i-20).stack()
-    seasonality = DataFrame(dic).mean(1).unstack()
+        dic[i] = r.rolling(30, min_periods=24).sum().shift(240*i-20).stack()
+    seasonality = DataFrame(dic).sum(1).unstack()
     df = seasonality.loc[seasonality.index>=start_date]
     df.index.name = 'trade_date'
     df.columns.name = 'stock_code'

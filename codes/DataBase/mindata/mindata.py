@@ -16,8 +16,8 @@ end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = end_date
 # start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 
-# start_date = '20210101'
-# end_date = '20230101'
+# start_date = '20231030'
+# end_date = '20231104'
 
 sql_trade_cal = """
 select distinct cal_date from ttstradecal where is_open = 1

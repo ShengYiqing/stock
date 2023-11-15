@@ -79,16 +79,14 @@ if __name__ == '__main__':
     start_date = '20100101'
     
     factors = [
-        'bp', 
-        'mc', 
         'beta',
+        'jump', 
         'reversal', 
         'momentum',  
         'seasonality',
-        'skew',  
-        'cpshl', 
-        'crhls', 
-        'jump', 
+        'skew',
+        'crhl', 
+        'cphl', 
         ]
 
     
