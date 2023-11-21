@@ -13,12 +13,18 @@ on tl.stock_code = ti.stock_code
 left join style.tdailystyle ts
 on tl.trade_date = ts.trade_date
 and tl.stock_code = ts.stock_code
-where tl.trade_date = '20231113'
-and tl.amount >= 30000 and tl.price >= 5
-#and ts.rank_pb >= 0.05 
+where tl.trade_date = '20231116'
+and tl.amount >= 30000 and tl.price >= 3
+and ti.l3_name in (
+'快递', 
+'其他养殖', '生猪养殖', '肉鸡养殖', '农业综合Ⅲ', '其他农产品加工', '果蔬加工', '粮油加工', '水产养殖', '海洋捕捞', 
+'超市', '旅游零售Ⅲ', 
+'家纺', '运动服装', '非运动服装', '鞋帽及其他', '其他饰品', '钟表珠宝', 
+'化妆品制造及其他', '品牌化妆品', '医美服务', '医美耗材', 
+'烘焙食品', '熟食', '零食', '白酒Ⅲ', '调味发酵品Ⅲ', '其他酒类', '啤酒', '保健品', '肉制品', '预加工食品', '乳品', '软饮料')
 ) t
 ) t
-where t.lead_ind <= 300
+where t.lead_ind <= 7
 ) t
-where t.lead_stock <= 3800
+where t.lead_stock <= 100
 order by l1_name, l2_name, l3_name, lead_stock

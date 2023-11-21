@@ -21,22 +21,22 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20231115'
+trade_date = '20231120'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = [
+buy_list = ['000568', '605499', '300413', '600887'
             ]
 
-sell_list= [
+sell_list= ['002027', '600398', '600809',
             ]
 
 position.extend(buy_list)
 position = list(set(position) - set(sell_list))
-position = ['688036', '002568', '002027', '300866', '000858', 
-            '600398', '600809', '603605', 
-            ]
+# position = ['688036', '002568', '002027', '300866', '000858', 
+#             '600398', '600809', '603605', 
+#             ]
 with open('D:/stock/Codes/Trade//Results/position/pos.pkl', 'wb') as f:
     pickle.dump(position, f)
 

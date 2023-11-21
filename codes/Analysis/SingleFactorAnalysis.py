@@ -37,7 +37,7 @@ if __name__ == '__main__':
         ]
     # factors = ['beta']
     for factor_name in factors:
-        start_date = '20120101'
+        start_date = '20180101'
         end_date = '20231030'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)

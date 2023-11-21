@@ -48,9 +48,9 @@ c = np.log(c * adj_factor).unstack()
 o = np.log(o * adj_factor).unstack()
 
 r_jump = o - c.shift()
-x = r_jump.ewm(halflife=1).sum()
-x = tools.neutralize(x, factors=['mc', 'bp'], ret_type='alpha')
+x = r_jump.ewm(halflife=5).sum()
+x = tools.neutralize(x, ret_type='alpha')
 # x = tools.neutralize(x, ret_type='beta')
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 5, 'jump')
+tools.factor_analyse(x_, y, 10, 'jump')

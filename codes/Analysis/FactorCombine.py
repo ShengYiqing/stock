@@ -58,7 +58,7 @@ if datetime.datetime.today().strftime('%H%M') < '2200':
 else:
     end_date = datetime.datetime.today().strftime('%Y%m%d')
 
-# end_date = '20190101'
+end_date = '20231116'
 
 print('factors: ', factors)
 print('weight_sub: ', weight_sub)
@@ -107,4 +107,4 @@ for factor in factors:
     df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
-tools.factor_analyse(x, y, 5, 'combine')
+tools.factor_analyse(x, y, 25, 'combine')
