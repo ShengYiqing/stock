@@ -57,7 +57,7 @@ n1 = 20
 n2 = 250
 x1 = r.rolling(n1, min_periods=int(0.8*n1)).skew()
 x2 = r.rolling(n2, min_periods=int(0.8*n2)).skew()
-x = x1
+x = x1 - x2
 # x.index.name = 'trade_date'
 # x.columns.name = 'stock_code'
 # x = tools.neutralize(x)

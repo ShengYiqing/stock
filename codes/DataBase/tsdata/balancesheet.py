@@ -6,8 +6,6 @@ import datetime
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
-import Config
-sys.path.append(Config.GLOBALCONFIG_PATH)
 import Global_Config as gc
 import tools
 import sqlalchemy as sa

@@ -35,9 +35,19 @@ if __name__ == '__main__':
         'crhl', 
         'cphl',
         ]
-    # factors = ['beta']
+    factors = [
+        'operation', 
+        'gross', 
+        'core', 
+        'profitability', 
+        'cash', 
+        'growth', 
+        'stability', 
+        'quality'
+        ]
+    factors = ['bp']
     for factor_name in factors:
-        start_date = '20180101'
+        start_date = '20120101'
         end_date = '20231030'
         print(factor_name, start_date, end_date)
         single_factor_analysis(factor_name, start_date, end_date)

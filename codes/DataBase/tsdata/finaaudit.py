@@ -24,7 +24,8 @@ select ts_code from ttsstockbasic
 """
 stock_list = list(pd.read_sql(sql, engine).loc[:, 'ts_code'])
 for stock in stock_list:
-    df = tools.download_tushare(pro=pro, api_name='fina_audit', ts_code=stock, start_date=start_date, fields=[
+    print(stock)
+    df = tools.download_tushare(pro=pro, api_name='fina_audit', ts_code=stock, start_date='20230101', fields=[
     "ts_code",
     "ann_date",
     "end_date",

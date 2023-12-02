@@ -21,15 +21,15 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20231120'
+trade_date = '20231128'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['000568', '605499', '300413', '600887'
+buy_list = ['300896', 
             ]
 
-sell_list= ['002027', '600398', '600809',
+sell_list= ['603605', 
             ]
 
 position.extend(buy_list)
@@ -52,7 +52,7 @@ factors = [
     'reversal', 
     'momentum',  
     'seasonality',
-    'skew',
+    # 'skew',
     'crhl', 
     'cphl', 
     ]
@@ -63,11 +63,12 @@ weight_sub = {
     'reversal': -0.02, 
     'momentum': 0.02,  
     'seasonality': 0.015,
-    'skew': 0.01,
+    # 'skew': 0.01,
     'crhl': -0.01, 
     'cphl': -0.01, 
     }
 
+a = 0.9
 for factor in factors:
     if factor not in weight_sub.keys():
         weight_sub[factor] = 0
@@ -134,7 +135,7 @@ for trade_date in trade_dates:
     mat_ic_cov = ic_cov.loc[trade_date, :]
     mat = mat_ic_cov / np.diag(mat_ic_cov).mean()
     mat = mat + lambda_i * np.diag(np.ones(len(factors)))
-    weight.loc[trade_date, :] = (np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values) + weight_sub) / 2
+    weight.loc[trade_date, :] = a * weight_sub + (1 - a) * np.linalg.inv(mat).dot(ic_mean.loc[trade_date, :].values)
 
 sql = tools.generate_sql_y_x(factors + ['mc'], start_date, end_date)
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")

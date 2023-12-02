@@ -91,7 +91,7 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.savefig('%s/Factor/%s/04r2.png'%(gc.OUTPUT_PATH, factor_name))
         
         
-    x_quantile = DataFrame(x.rank(axis=1, pct=True))
+    x_quantile = x.rank(axis=1, pct=True)
     
     group_pos = {}
     for n in range(num_group):
@@ -146,7 +146,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
                      n=50):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
-    t1.r_{label_type} r_d, 
+    t1.r_{label_type} r, 
     (ts.rank_mc) leading_stock 
     """.format(label_type=label_type)
     

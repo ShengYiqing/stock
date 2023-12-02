@@ -21,20 +21,47 @@ from sqlalchemy import create_engine
 import multiprocessing as mp
 
 def f(factor_name, df, start_date, end_date):
-    y_d = tools.standardize(tools.winsorize(df.loc[:, 'r_d'].unstack()))
+    y = tools.standardize(tools.winsorize(df.loc[:, 'r'].unstack()))
     x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
     
-    ic_d = x.corrwith(y_d, axis=1)
+    ic = x.corrwith(y, axis=1)
     
-    rank_ic_d = x.corrwith(y_d, axis=1, method='spearman')
+    rank_ic = x.corrwith(y, axis=1, method='spearman')
     
-    df_ic = DataFrame({'IC_D':ic_d, 'RANK_IC_D':rank_ic_d, })
+    x_quantile = x.rank(axis=1, pct=True)
+    
+    semi_rank_ic = x_quantile.corrwith(y, axis=1)
+    
+    num_group = 5
+    group_pos = {}
+    for n in range(num_group):
+        group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group)).astype(int)
+        group_pos[n] = group_pos[n].replace(0, np.nan)
+    
+    top = (group_pos[num_group-1] * y).mean(1) - y.mean(1)
+    sub_top = (group_pos[num_group-2] * y).mean(1) - y.mean(1)
+    
+    bottom = (group_pos[0] * y).mean(1) - y.mean(1)
+    sub_bottom = (group_pos[1] * y).mean(1) - y.mean(1)
+    
+    tr = x.corrwith(x.shift(), axis=1, method='spearman')
+    
+    df_ic = DataFrame({
+        'ic':ic, 
+        'rank_ic':rank_ic, 
+        'semi_rank_ic':semi_rank_ic, 
+        'top': top, 
+        'sub_top': sub_top, 
+        'bottom': bottom, 
+        'sub_bottom': sub_bottom, 
+        'tr': tr,
+        })
     df_ic = df_ic.loc[df_ic.index>=start_date, :]
     df_ic.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df_ic.loc[:, 'FACTOR_NAME'] = factor_name
 
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevaluation?charset=utf8")
-    df_ic.to_sql('tdailyic', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
+    df_ic.to_sql('tdailyfactorevaluation', engine, schema='factorevaluation', if_exists='append', index=True, chunksize=10000, method=tools.mysql_replace_into)
 
 
     # e2_d = (y_d - x.mul(ic_d, axis=0)) ** 2
@@ -95,6 +122,6 @@ if __name__ == '__main__':
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
     pool = mp.Pool(4)
     for factor in factors:
-        pool.apply_async(func=f, args=(factor, df.loc[:, ['r_d', factor]], start_date, end_date))
+        pool.apply_async(func=f, args=(factor, df.loc[:, ['r', factor]], start_date, end_date))
     pool.close()
     pool.join()

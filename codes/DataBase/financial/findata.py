@@ -18,6 +18,13 @@ start_date = (datetime.datetime.today() - datetime.timedelta(30)).strftime('%Y%m
 # end_date = '20150101'
 # start_date = '20220101'
 
+# start_y = 2010
+# end_y = 2023
+# for i in range(2010, 2024):
+#     start_date = str(i) + '0101'
+#     end_date = str(i+1) + '0101'
+#     print(start_date, end_date)
+        
 sql_bs = """
 select 
 ann_date, 
@@ -124,7 +131,12 @@ report_date ann_date,
 quarter end_date, 
 stock_code, 
 op_rt * 10000 yysr, 
-np * 10000 gmjlr 
+np * 10000 gmjlr, 
+eps, 
+pe, 
+rd, 
+roe, 
+ev_ebitda
 from ttsreportrc
 where report_date >= {start_date} 
 and report_date <= {end_date}

@@ -24,7 +24,8 @@ select ts_code from ttsstockbasic
 """
 stock_list = list(pd.read_sql(sql, engine).loc[:, 'ts_code'])
 for stock in stock_list:
-    df = tools.download_tushare(pro=pro, api_name='forecast', ts_code=stock, fields='ts_code, ann_date, end_date, type, p_change_min, p_change_max, net_profit_min, net_profit_max, last_parent_net, first_ann_date')
+    print(stock)
+    df = tools.download_tushare(pro=pro, api_name='forecast', ts_code=stock, start_date=start_date, fields='ts_code, ann_date, end_date, type, p_change_min, p_change_max, net_profit_min, net_profit_max, last_parent_net, first_ann_date')
     
     if len(df) > 0:
         df.loc[:, 'stock_code'] = [sc.split('.')[0] for sc in df.loc[:, 'ts_code']]
