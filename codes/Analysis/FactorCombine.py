@@ -38,12 +38,12 @@ factors = [
 weight_sub = {
     'beta': 0.02,
     'jump': 0.01, 
-    'reversal': -0.02, 
+    'reversal': 0.02, 
     'momentum': 0.02,  
     'seasonality': 0.015,
     # 'skew': 0.01,
-    'crhl': -0.01, 
-    'cphl': -0.01, 
+    'crhl': 0.01, 
+    'cphl': 0.01, 
     }
 
 a = 0.9
@@ -53,7 +53,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20210101'
+start_date = '20180101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:

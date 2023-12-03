@@ -32,7 +32,7 @@ def f(factor_name, df, start_date, end_date):
     
     semi_rank_ic = x_quantile.corrwith(y, axis=1)
     
-    num_group = 5
+    num_group = 10
     group_pos = {}
     for n in range(num_group):
         group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group)).astype(int)

@@ -69,10 +69,28 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.figure(figsize=(16,9))
     plt.hist(x.values.flatten())
     plt.title(factor_name+'-hist')
-    plt.savefig('%s/Factor/%s/01hist.png'%(gc.OUTPUT_PATH, factor_name))
+    plt.savefig('%s/Factor/%s/00hist.png'%(gc.OUTPUT_PATH, factor_name))
     
     IC = x.corrwith(y, axis=1)
+    rank_IC = x.corrwith(y, axis=1, method='spearman')
     IR = IC.rolling(250).mean() / IC.rolling(250).std()
+    
+    plt.figure(figsize=(16,9))
+    plt.hist(IC)
+    plt.title(factor_name+'-ic_hist')
+    plt.savefig('%s/Factor/%s/01ic_hist.png'%(gc.OUTPUT_PATH, factor_name))
+    
+    plt.figure(figsize=(16,9))
+    plt.hist(rank_IC)
+    plt.title(factor_name+'-ic_hist')
+    plt.savefig('%s/Factor/%s/01rank_ic_hist.png'%(gc.OUTPUT_PATH, factor_name))
+    
+    fig = sm.qqplot((IC - IC.mean()) / IC.std(), line='45')
+    plt.savefig('%s/Factor/%s/01ic_qq.png'%(gc.OUTPUT_PATH, factor_name))
+    
+    fig = sm.qqplot((rank_IC - rank_IC.mean()) / rank_IC.std(), line='45')
+    plt.savefig('%s/Factor/%s/01rank_ic_qq.png'%(gc.OUTPUT_PATH, factor_name))
+    
     
     plt.figure(figsize=(16,9))
     IC.cumsum().plot()

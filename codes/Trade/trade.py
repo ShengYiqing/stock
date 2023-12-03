@@ -21,7 +21,7 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20231128'
+trade_date = '20231201'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -60,12 +60,12 @@ factors = [
 weight_sub = {
     'beta': 0.02,
     'jump': 0.01, 
-    'reversal': -0.02, 
+    'reversal': 0.02, 
     'momentum': 0.02,  
     'seasonality': 0.015,
     # 'skew': 0.01,
-    'crhl': -0.01, 
-    'cphl': -0.01, 
+    'crhl': 0.01, 
+    'cphl': 0.01, 
     }
 
 a = 0.9
@@ -117,8 +117,8 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql_ic = """
 select trade_date, factor_name, 
-rank_ic_d ic
-from tdailyic
+rank_ic ic
+from tdailyfactorevaluation
 where factor_name in {factor_names}
 and trade_date >= {start_date}
 and trade_date <= {end_date}
@@ -145,7 +145,7 @@ df.loc[:, 'mc'] = tools.standardize(tools.winsorize(df.loc[:, 'mc']))
 for factor in factors:
     df.loc[:, factor] = tools.standardize(df.loc[:, factor].rank(pct=True))
     
-y = df.loc[:, 'r_d'].unstack()
+y = df.loc[:, 'r'].unstack()
 
 x = DataFrame(dtype='float64')
 for factor in factors:
