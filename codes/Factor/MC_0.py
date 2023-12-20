@@ -26,13 +26,15 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select STOCK_CODE, TRADE_DATE, total_mv from tsdata.ttsdailybasic
+    select STOCK_CODE, TRADE_DATE, 
+    (total_mv / total_share * free_share) mc 
+    from tsdata.ttsdailybasic
     where trade_date >= {start_date}
     and trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date, end_date=end_date)
     df = pd.read_sql(sql, engine)
-    df = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'total_mv']
+    df = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'mc']
     df = df.unstack()
     df = np.log(df)
     df = DataFrame({'factor_value':df.stack()})

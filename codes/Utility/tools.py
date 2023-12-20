@@ -71,25 +71,9 @@ def factor_analyse(x, y, num_group, factor_name):
     plt.title(factor_name+'-hist')
     plt.savefig('%s/Factor/%s/00hist.png'%(gc.OUTPUT_PATH, factor_name))
     
-    IC = x.corrwith(y, axis=1)
-    rank_IC = x.corrwith(y, axis=1, method='spearman')
+    IC = x.corrwith(y, axis=1, method='spearman')
     IR = IC.rolling(250).mean() / IC.rolling(250).std()
     
-    plt.figure(figsize=(16,9))
-    plt.hist(IC)
-    plt.title(factor_name+'-ic_hist')
-    plt.savefig('%s/Factor/%s/01ic_hist.png'%(gc.OUTPUT_PATH, factor_name))
-    
-    plt.figure(figsize=(16,9))
-    plt.hist(rank_IC)
-    plt.title(factor_name+'-ic_hist')
-    plt.savefig('%s/Factor/%s/01rank_ic_hist.png'%(gc.OUTPUT_PATH, factor_name))
-    
-    fig = sm.qqplot((IC - IC.mean()) / IC.std(), line='45')
-    plt.savefig('%s/Factor/%s/01ic_qq.png'%(gc.OUTPUT_PATH, factor_name))
-    
-    fig = sm.qqplot((rank_IC - rank_IC.mean()) / rank_IC.std(), line='45')
-    plt.savefig('%s/Factor/%s/01rank_ic_qq.png'%(gc.OUTPUT_PATH, factor_name))
     
     
     plt.figure(figsize=(16,9))
@@ -156,12 +140,11 @@ def factor_analyse(x, y, num_group, factor_name):
     
     
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
-                     is_trade=True, is_industry=True, 
+                     is_trade=True, is_industry=False, 
                      white_dic={'price': 3, 'amount': 3e4}, 
-                        style_dic=None, 
-                       # style_dic={'rank_pb': 0.05}, 
-                     n_ind=7,
-                     n=50):
+                     style_dic={'rank_mc': 0.05, 'rank_pb': 0.05}, 
+                     n_ind=500,
+                     n=3800):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
     t1.r_{label_type} r, 
@@ -302,7 +285,7 @@ def reg_ts(df, n):
     return b, e
 
 
-def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3', ret_type='alpha'):
+def generate_beta_alpha(data, factors=['beta', 'mc', 'bp'], ind='l1'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'
@@ -350,28 +333,96 @@ def neutralize(data, factors=['beta', 'mc', 'bp'], ind='l3', ret_type='alpha'):
         y = data.stack()
         y.name = 'y'
         data = pd.concat([y, df_n], axis=1).dropna()
-
-        def g(data):
-            # pdb.set_trace()
+        
+        def generate_beta(data):
             if ind == None:
                 X = data.loc[:, factors].fillna(0)
             else:
                 X = pd.concat([pd.get_dummies(data.loc[:, ind]), data.loc[:, factors]], axis=1).fillna(0)
             
-            X = sm.add_constant(X)
-            for factor in factors:
-                X.loc[:, factor] = winsorize(X.loc[:, factor])
+            X = standardize(X.T).T
+            y = standardize(data.loc[:, 'y'])
             
-            y = winsorize(data.loc[:, 'y'])
             W = DataFrame(np.diag(data.loc[:, 'mc']), index=y.index, columns=y.index)
+            beta = np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y)
+            y_predict = X.dot(beta)
+            
+            return DataFrame(y_predict)
+        
+        beta = data.groupby('trade_date').apply(generate_beta).iloc[:, 0]
+        alpha = y - beta
+        return beta.unstack(), alpha.unstack()
+    else:
+        return None
+    
+
+def neutralize(data, factors=['mc', 'bp'], ind='l3', ret_type='alpha'):
+    if isinstance(data, DataFrame):
+        data.index.name = 'trade_date'
+        data.columns.name = 'stock_code'
+        engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
+        f0 = factors[0]
+        sql = """
+        select t{f0}.trade_date trade_date, t{f0}.stock_code stock_code, t{f0}.factor_value {f0}
+        """.format(f0=f0)
+        if len(factors) > 1:
+            for f in factors[1:]:
+                sql += """
+                , t{f}.factor_value {f}
+                """.format(f=f)
+        sql += """
+        , tind.l1_name l1, tind.l2_name l2, tind.l3_name l3
+        """
+        
+        sql += """
+        from factor.tfactor{f0} t{f0}
+        """.format(f0=f0)
+        if len(factors) > 1:
+            for f in factors[1:]:
+                sql += """
+                left join factor.tfactor{f} t{f}
+                on t{f0}.stock_code = t{f}.stock_code
+                and t{f0}.trade_date = t{f}.trade_date
+                """.format(f0=f0, f=f)
+        
+        if len(data.index) > 1:
+            sql += """
+            left join indsw.tindsw tind
+            on t{f0}.stock_code = tind.stock_code
+            where t{f0}.trade_date in {trade_dates}
+            and t{f0}.stock_code in {stock_codes}
+            """.format(f0=f0, trade_dates=tuple(data.index), stock_codes=tuple(data.columns))
+        else:
+            sql += """
+            left join indsw.tindsw tind
+            on t{f0}.stock_code = tind.stock_code
+            where t{f0}.trade_date = {trade_date}
+            and t{f0}.stock_code in {stock_codes}
+            """.format(f0=f0, trade_date=data.index[0], stock_codes=tuple(data.columns))
+        df_n = pd.read_sql(sql, engine)
+        df_n = df_n.set_index(['trade_date', 'stock_code'])
+        y = data.stack()
+        y.name = 'y'
+        df = pd.concat([y, df_n], axis=1).dropna()
+
+        def g(df):
+            # pdb.set_trace()
+            if ind == None:
+                X = df.loc[:, factors].fillna(0)
+            else:
+                X = pd.concat([pd.get_dummies(df.loc[:, ind]), df.loc[:, factors]], axis=1).fillna(0)
+            
+            # X = sm.add_constant(X)
+            # for factor in factors:
+            #     X.loc[:, factor] = winsorize(X.loc[:, factor])
+            
+            y = df.loc[:, 'y']
+            W = DataFrame(np.diag(df.loc[:, 'mc']), index=y.index, columns=y.index)
             y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
             # y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
-            if ret_type == 'alpha':
-                ret = standardize(winsorize(y - y_predict))
-            elif ret_type == 'beta':
-                ret = standardize(winsorize(y_predict))
-            return ret
-        x_n = data.groupby('trade_date', as_index=False).apply(g).reset_index(0, drop=True)
+            
+            return DataFrame(y - y_predict)
+        x_n = df.groupby('trade_date').apply(g).iloc[:, 0]
 
         return x_n.unstack()
     else:

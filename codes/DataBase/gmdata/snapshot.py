@@ -73,7 +73,7 @@ def f(date, stock):
         print(date, stock, ' fail')
 if __name__ == '__main__':
     date = datetime.datetime.today().strftime('%Y%m%d')
-    # date = '20230601'
+    # date = '20231219'
     start_date = date
     end_date = date
     # start_date = '20231030'

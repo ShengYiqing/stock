@@ -8,9 +8,6 @@ Created on Mon Jan 18 21:47:43 2021
 import os
 import sys
 import datetime
-import Config
-sys.path.append(Config.GLOBALCONFIG_PATH)
-
 import Global_Config as gc
 import tools
 import numpy as np
@@ -21,41 +18,16 @@ from sqlalchemy import create_engine
 import multiprocessing as mp
 
 def f(factor_name, df, start_date, end_date):
-    y = tools.standardize(tools.winsorize(df.loc[:, 'r'].unstack()))
-    x = tools.standardize(tools.winsorize(df.loc[:, factor_name].unstack()))
+    y = df.loc[:, 'r'].unstack()
+    x = df.loc[:, factor_name].unstack()
+    y_e = tools.neutralize(y)
+    x_e = tools.neutralize(x)
     
-    ic = x.corrwith(y, axis=1)
-    
-    rank_ic = x.corrwith(y, axis=1, method='spearman')
-    
-    x_quantile = x.rank(axis=1, pct=True)
-    
-    semi_rank_ic = x_quantile.corrwith(y, axis=1)
-    
-    num_group = 10
-    group_pos = {}
-    for n in range(num_group):
-        group_pos[n] = DataFrame((n/num_group <= x_quantile) & (x_quantile <= (n+1)/num_group)).astype(int)
-        group_pos[n] = group_pos[n].replace(0, np.nan)
-    
-    top = (group_pos[num_group-1] * y).mean(1) - y.mean(1)
-    sub_top = (group_pos[num_group-2] * y).mean(1) - y.mean(1)
-    
-    bottom = (group_pos[0] * y).mean(1) - y.mean(1)
-    sub_bottom = (group_pos[1] * y).mean(1) - y.mean(1)
-    
-    tr = x.corrwith(x.shift(), axis=1, method='spearman')
-    
+    ic = y_e.corrwith(x_e, axis=1, method='spearman')
     df_ic = DataFrame({
-        'ic':ic, 
-        'rank_ic':rank_ic, 
-        'semi_rank_ic':semi_rank_ic, 
-        'top': top, 
-        'sub_top': sub_top, 
-        'bottom': bottom, 
-        'sub_bottom': sub_bottom, 
-        'tr': tr,
+        'ic': ic, 
         })
+    
     df_ic = df_ic.loc[df_ic.index>=start_date, :]
     df_ic.loc[:, 'REC_CREATE_TIME'] = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
     df_ic.loc[:, 'FACTOR_NAME'] = factor_name

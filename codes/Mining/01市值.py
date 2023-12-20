@@ -12,13 +12,13 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
-end_date = '20230830'
+start_date = '20120101'
+end_date = '20231130'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql_y = tools.generate_sql_y_x([], start_date, end_date)
+sql_y = tools.generate_sql_y_x([], start_date, end_date, white_dic=None, style_dic=None, n_ind=500, n=5000)
 df_y = pd.read_sql(sql_y, engine)
-y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
+y = df_y.set_index(['trade_date', 'stock_code']).r.unstack()
 stock_codes = list(y.columns)
 #%%
 n = 250
@@ -43,4 +43,4 @@ x = mc.unstack()
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 21, 'ya')
+tools.factor_analyse(x_, y, 10, 'ya')

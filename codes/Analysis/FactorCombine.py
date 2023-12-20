@@ -17,6 +17,7 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 import statsmodels.api as sm
+
 halflife_mean = 250
 halflife_cov = 750
 
@@ -30,18 +31,18 @@ factors = [
     'reversal', 
     'momentum',  
     'seasonality',
-    # 'skew',
+    'skew',
     'crhl', 
     'cphl', 
     ]
 
 weight_sub = {
-    'beta': 0.02,
+    'beta': 0.01,
     'jump': 0.01, 
-    'reversal': 0.02, 
-    'momentum': 0.02,  
-    'seasonality': 0.015,
-    # 'skew': 0.01,
+    'reversal': 0.01, 
+    'momentum': 0.01,  
+    'seasonality': 0.01,
+    'skew': 0.01,
     'crhl': 0.01, 
     'cphl': 0.01, 
     }
@@ -59,7 +60,7 @@ if datetime.datetime.today().strftime('%H%M') < '2200':
 else:
     end_date = datetime.datetime.today().strftime('%Y%m%d')
 
-end_date = '20231116'
+# end_date = '20231116'
 
 print('factors: ', factors)
 print('weight_sub: ', weight_sub)
@@ -72,7 +73,7 @@ engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/factorevalu
 
 sql = """
 select trade_date, factor_name, 
-rank_ic factor_return 
+ic factor_return 
 from tdailyfactorevaluation
 where factor_name in {factor_names}
 and trade_date >= {start_date}
@@ -104,8 +105,13 @@ y = df.loc[:, 'r'].unstack()
 x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
+    df_x = tools.neutralize(df_x)
     df_x = df_x.rank(axis=1, pct=True)
     df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
+
+n = 25
+pos = (x.rank(axis=1, pct=True) > (1-1/n))
+((pos == True) & (pos.shift() == True)).mean(1).plot()
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
-tools.factor_analyse(x, y, 10, 'multifactor')
+tools.factor_analyse(x, y, 50, 'multifactor')
