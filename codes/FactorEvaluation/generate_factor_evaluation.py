@@ -88,7 +88,7 @@ if __name__ == '__main__':
         'cphl', 
         ]
 
-    
+    factors = ['beta']
     sql = tools.generate_sql_y_x(factors, start_date, end_date, label_type='c')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")
     df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])

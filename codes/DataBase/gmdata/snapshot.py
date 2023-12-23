@@ -96,14 +96,19 @@ if __name__ == '__main__':
     #获取日期
     dates = tools.get_trade_cal(start_date, end_date)
     #取数写入
-    pool = mp.Pool(2)
-
     for date in dates:
-        # pool.apply_async(func=f, args=(date, stocks))
         if not os.path.exists('D:/stock/DataBase/StockSnapshootData/%s'%date):
             os.mkdir('D:/stock/DataBase/StockSnapshootData/%s'%date)
         for stock in stocks:
-            pool.apply_async(func=f, args=(date, stock))
-            # f(date, stock)
-    pool.close()
-    pool.join()
+            f(date, stock)
+    # pool = mp.Pool(2)
+
+    # for date in dates:
+    #     # pool.apply_async(func=f, args=(date, stocks))
+    #     if not os.path.exists('D:/stock/DataBase/StockSnapshootData/%s'%date):
+    #         os.mkdir('D:/stock/DataBase/StockSnapshootData/%s'%date)
+    #     for stock in stocks:
+    #         pool.apply_async(func=f, args=(date, stock))
+    #         # f(date, stock)
+    # pool.close()
+    # pool.join()

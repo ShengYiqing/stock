@@ -141,14 +141,14 @@ def factor_analyse(x, y, num_group, factor_name):
     
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
                      is_trade=True, is_industry=False, 
-                     white_dic={'price': 3, 'amount': 3e4}, 
-                     style_dic={'rank_mc': 0.05, 'rank_pb': 0.05}, 
-                     n_ind=500,
-                     n=3800):
+                     white_dic={'price': gc.LIMIT_PRICE, 'amount': gc.LIMIT_AMOUNT}, 
+                     style_dic={'rank_mc': gc.LIMIT_RANK_MC}, 
+                     n_ind=gc.LIMIT_N_IND,
+                     n=gc.LIMIT_N):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
-    t1.r_{label_type} r, 
-    (ts.rank_mc) leading_stock 
+    t1.r_{label_type} r, t1.r_a, t1.r_o, t1.r_c, 
+    (ts.rank_mc) leading_stock, ts.mc style_mc, ts.pb style_pb
     """.format(label_type=label_type)
     
     for factor_name in factor_names:
@@ -406,20 +406,15 @@ def neutralize(data, factors=['mc', 'bp'], ind='l3', ret_type='alpha'):
         df = pd.concat([y, df_n], axis=1).dropna()
 
         def g(df):
-            # pdb.set_trace()
             if ind == None:
                 X = df.loc[:, factors].fillna(0)
             else:
                 X = pd.concat([pd.get_dummies(df.loc[:, ind]), df.loc[:, factors]], axis=1).fillna(0)
             
-            # X = sm.add_constant(X)
-            # for factor in factors:
-            #     X.loc[:, factor] = winsorize(X.loc[:, factor])
-            
             y = df.loc[:, 'y']
-            W = DataFrame(np.diag(df.loc[:, 'mc']), index=y.index, columns=y.index)
-            y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
-            # y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
+            # W = DataFrame(np.diag(df.loc[:, 'mc']), index=y.index, columns=y.index)
+            # y_predict = X.dot(np.linalg.inv(X.T.dot(W).dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(W).dot(y))
+            y_predict = X.dot(np.linalg.inv(X.T.dot(X)+0.001*np.identity(len(X.T))).dot(X.T).dot(y))
             
             return DataFrame(y - y_predict)
         x_n = df.groupby('trade_date').apply(g).iloc[:, 0]

@@ -12,13 +12,13 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20120901'
+start_date = '20180901'
 end_date = '20230830'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
-y = df_y.set_index(['trade_date', 'stock_code']).r_d.unstack()
+y = df_y.set_index(['trade_date', 'stock_code']).r.unstack()
 stock_codes = tuple(y.columns)
 #%%
 start_date_sql = tools.trade_date_shift(start_date, 1250)
@@ -61,9 +61,9 @@ r[ud] = np.nan
 momentum = r.rolling(250, min_periods=60).sum().shift(20)
 
 x = momentum
-# x.index.name = 'trade_date'
-# x.columns.name = 'stock_code'
-# x = tools.neutralize(x)
+x.index.name = 'trade_date'
+x.columns.name = 'stock_code'
+# x = tools.neutralize(x, ind='l1')
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
 tools.factor_analyse(x_, y, 10, 'momentum')

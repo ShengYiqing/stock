@@ -53,7 +53,7 @@ def generate_factor(start_date, end_date):
     close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
     r_m = np.log(close_m).diff()
     
-    n = 250
+    n = 20
     sxy = r.rolling(n, min_periods=int(0.8*n)).cov(r_m)
     sxx = r_m.rolling(n, min_periods=int(0.8*n)).var()
     df = sxy.div(sxx, axis=0).replace(-np.inf, np.nan).replace(np.inf, np.nan)

@@ -12,7 +12,7 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20120101'
+start_date = '20180101'
 end_date = '20231130'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
@@ -55,11 +55,11 @@ close_m = pd.read_sql(sql, engine).set_index('trade_date').loc[:, 'close']
 r_m = np.log(close_m).diff()
 
 n = 20
-sxy = r.rolling(n, min_periods=int(0.618*n)).cov(r_m)
-sxx = r_m.rolling(n, min_periods=int(0.618*n)).var()
+sxy = r.rolling(n, min_periods=int(0.8*n)).cov(r_m)
+sxx = r_m.rolling(n, min_periods=int(0.8*n)).var()
 # sxy = r.ewm(halflife=n, min_periods=int(0.618*n)).cov(r_m)
 # sxx = r_m.ewm(halflife=n, min_periods=int(0.618*n)).var()
-cxy = r.rolling(n, min_periods=int(0.618*n)).corr(r_m)
+cxy = r.rolling(n, min_periods=int(0.8*n)).corr(r_m)
 x = sxy.div(sxx, axis=0).replace(-np.inf, np.nan).replace(np.inf, np.nan)
 x = tools.neutralize(x, ind='l3')
 x_ = DataFrame(x, index=y.index, columns=y.columns)
