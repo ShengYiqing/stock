@@ -21,7 +21,7 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20231220'
+trade_date = '20231228'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
@@ -150,7 +150,6 @@ y = df.loc[:, 'r'].unstack()
 x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
-    df_x = tools.neutralize(df_x)
     df_x = df_x.rank(axis=1, pct=True)
     df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)

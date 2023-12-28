@@ -31,7 +31,7 @@ factors = [
     'reversal', 
     'momentum',  
     'seasonality',
-    'skew',
+    # 'skew',
     'crhl', 
     'cphl', 
     ]
@@ -42,7 +42,7 @@ weight_sub = {
     'reversal': 0.01, 
     'momentum': 0.01,  
     'seasonality': 0.01,
-    'skew': 0.01,
+    # 'skew': 0.01,
     'crhl': 0.01, 
     'cphl': 0.01, 
     }
@@ -105,13 +105,12 @@ y = df.loc[:, 'r'].unstack()
 x = DataFrame(dtype='float64')
 for factor in factors:
     df_x = df.loc[:, factor].unstack()
-    df_x = tools.neutralize(df_x)
     df_x = df_x.rank(axis=1, pct=True)
     df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 
-n = 25
+n = 5
 pos = (x.rank(axis=1, pct=True) > (1-1/n))
-((pos == True) & (pos.shift() == True)).mean(1).plot()
+((pos == True) & (pos.shift() == True)).sum(1).plot()
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
-tools.factor_analyse(x, y, 50, 'multifactor')
+tools.factor_analyse(x, y, n, 'multifactor')

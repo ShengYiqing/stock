@@ -15,9 +15,10 @@ on tl.stock_code = ti.stock_code
 left join style.tdailystyle ts
 on tl.trade_date = ts.trade_date
 and tl.stock_code = ts.stock_code
-where tl.trade_date = '20231215'
+where tl.trade_date = '20120104'
 and tl.amount >= 30000 and tl.price >= 3
-and ts.rank_mc >= 0.2
+and tl.is_trade = 1
+and ts.rank_mc >= 0.2 and ts.rank_pb >= 0
 ) t
 ) t
 where t.lead_ind <= 500

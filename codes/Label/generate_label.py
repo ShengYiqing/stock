@@ -67,37 +67,28 @@ r_o = open_hfq.shift(-2) - open_hfq.shift(-1)
 r_c = close_hfq.shift(-1) - close_hfq
 
 yiziban = (HIGH == LOW).astype(int)
+yiziban[HIGH.isna()] = np.nan
 yiziban = yiziban.shift(-1)
 yiziban.iloc[-1, :] = 0
 
 suspend = suspend.copy()
 suspend[suspend.notna()] = 1
-suspend.fillna(0, inplace=True)
+suspend[suspend.isna()] = 0
+suspend[CLOSE.isna()] = np.nan
 suspend = suspend.shift(-1)
 suspend.iloc[-1, :] = 0
 
-days_new = 60
+days_new = 250
 start_date_new = tools.trade_date_shift(start_date, days_new)
-trade_dates_new = tools.get_trade_cal(start_date_new, end_date)
 sql_new = """
 select issue_date, stock_code, 1 as a from ttsnewshare
 where issue_date >= {start_date_new}
 """.format(start_date_new=start_date_new)
 df_new = pd.read_sql(sql_new, engine)
-df_new = df_new.set_index(['issue_date', 'stock_code']).unstack()
-new = DataFrame(df_new.loc[:, 'a'], index=trade_dates_new)
-new.fillna(method='bfill', inplace=True)
-new.fillna(method='ffill', limit=days_new, inplace=True)
+df_new = df_new.set_index(['issue_date', 'stock_code']).a.unstack()
+days_list = DataFrame(df_new, index=r_c.index).fillna(method='ffill').cumsum()
+days_list.loc[:, list(set(r_c.columns) - set(days_list.columns))] = 65535
 
-new = DataFrame(new, index=r_a.index, columns=r_a.columns)
-new.fillna(0, inplace=True)
-
-is_trade = yiziban + suspend + new
-
-is_trade[is_trade>0] = 1
-is_trade[(r_a.isna() & r_o.isna() & r_c.isna()).iloc[:-1]] = np.nan
-
-is_trade = 1 - is_trade
 
 mc = mc
 amount = AMOUNT.ewm(halflife=60, min_periods=60).mean()
@@ -106,7 +97,9 @@ price = CLOSE
 df = pd.concat({'r_a':r_a,  
                 'r_o':r_o, 
                 'r_c':r_c, 
-                'is_trade':is_trade,
+                'days_list':days_list,
+                'suspend':suspend,
+                'breaker':yiziban,
                 'price':price,
                 'amount':amount,
                 'mc':mc,

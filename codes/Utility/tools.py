@@ -140,9 +140,12 @@ def factor_analyse(x, y, num_group, factor_name):
     
     
 def generate_sql_y_x(factor_names, start_date, end_date, label_type='o', 
-                     is_trade=True, is_industry=False, 
+                     limit_days_list=gc.LIMIT_DAYS_LIST, 
+                     limit_suspend=gc.LIMIT_SUSPEND, 
+                     limit_breaker=gc.LIMIT_BREAKER,
+                     is_industry=True, 
                      white_dic={'price': gc.LIMIT_PRICE, 'amount': gc.LIMIT_AMOUNT}, 
-                     style_dic={'rank_mc': gc.LIMIT_RANK_MC}, 
+                     style_dic={'rank_mc': gc.LIMIT_RANK_MC, 'rank_pb': gc.LIMIT_RANK_PB}, 
                      n_ind=gc.LIMIT_N_IND,
                      n=gc.LIMIT_N):
     sql = """
@@ -171,8 +174,12 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
     
     sql += """ where t1.trade_date >= \'{start_date}\'
                and t1.trade_date <= \'{end_date}\'""".format(start_date=start_date, end_date=end_date)
-    if is_trade:
-        sql += " and t1.is_trade = 1 "
+    if limit_days_list:
+        sql += " and t1.days_list >= {limit_days_list} ".format(limit_days_list=limit_days_list)
+    if limit_suspend:
+        sql += " and t1.suspend = 0 "
+    if limit_breaker:
+        sql += " and t1.breaker = 0 "
     
     if white_dic:
         for k in white_dic.keys():
@@ -212,6 +219,26 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
     
     return sql
 
+
+def generate_sql_y_x_ind(factor_names, start_date, end_date, label_type='o'):
+    sql = """
+    select t1.trade_date, t1.ind_name, t1.r_{label_type} r, t1.r_a, t1.r_o, t1.r_c 
+    """.format(label_type=label_type)
+    
+    for factor_name in factor_names:
+        sql += ' , t{factor_name}.factor_value {factor_name} '.format(factor_name=factor_name)
+    sql += ' from label.tinddailylabel t1 '
+    for factor_name in factor_names:
+        sql += """ left join indfactor.tindfactor{factor_name} t{factor_name} 
+                   on t1.trade_date = t{factor_name}.trade_date 
+                   and t1.ind_name = t{factor_name}.ind_name """.format(factor_name=factor_name)
+
+    sql += """ 
+    where t1.trade_date >= {start_date}
+    and t1.trade_date <= {end_date}
+    """.format(start_date=start_date, end_date=end_date)
+    
+    return sql
 
 def trade_date_shift(date, shift):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
@@ -356,7 +383,7 @@ def generate_beta_alpha(data, factors=['beta', 'mc', 'bp'], ind='l1'):
         return None
     
 
-def neutralize(data, factors=['mc', 'bp'], ind='l3', ret_type='alpha'):
+def neutralize(data, factors=['mc', 'bp'], ind='l1', ret_type='alpha'):
     if isinstance(data, DataFrame):
         data.index.name = 'trade_date'
         data.columns.name = 'stock_code'

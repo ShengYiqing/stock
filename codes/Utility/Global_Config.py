@@ -9,12 +9,15 @@ from pandas import Series, DataFrame
 from openpyxl import load_workbook
 
 #策略配置
-LIMIT_PRICE = 3
-LIMIT_AMOUNT = 30000
+LIMIT_PRICE = 5
+LIMIT_AMOUNT = 50000
 LIMIT_RANK_MC = 0.2
-LIMIT_N_IND = 500
-LIMIT_N = 3800
-
+LIMIT_RANK_PB = 0.0
+LIMIT_N_IND = 7
+LIMIT_N = 50
+LIMIT_DAYS_LIST = 255
+LIMIT_SUSPEND = True
+LIMIT_BREAKER = True
 #字段名
 
 #路径名
