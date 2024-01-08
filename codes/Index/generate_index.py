@@ -12,15 +12,60 @@ import statsmodels.api as sm
 from sqlalchemy import create_engine
 
 
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
-
+engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306")
 
 end_date = datetime.datetime.today().strftime('%Y%m%d')
 start_date = (datetime.datetime.today() - datetime.timedelta(60)).strftime('%Y%m%d')
-start_date = '20100101'
+# start_date = '20100101'
 
-sql = tools.generate_sql_y_x([], start_date, end_date)
+#%%
+n = 250
+start_date_sql = tools.trade_date_shift(start_date, n)
+
+sql = """
+select t.* from
+(
+select t.*, rank() over(partition by trade_date order by mc desc) lead_stock from
+(
+select t.*, rank() over(partition by trade_date, l1_name, l2_name, l3_name order by mc desc) lead_ind from
+(
+select t1.trade_date, t1.stock_code, 
+t1.open, t1.close, t2.adj_factor, 
+ts.mc, ti.l1_name, ti.l2_name, ti.l3_name
+from tsdata.ttsdaily t1
+left join tsdata.ttsadjfactor t2
+on t1.stock_code = t2.stock_code
+and t1.trade_date = t2.trade_date
+left join label.tdailylabel tl
+on t1.stock_code = tl.stock_code
+and t1.trade_date = tl.trade_date
+left join style.tdailystyle ts
+on t1.stock_code = ts.stock_code
+and t1.trade_date = ts.trade_date
+left join indsw.tindsw ti
+on tl.stock_code = ti.stock_code
+where t1.trade_date >= {start_date}
+and t1.trade_date <= {end_date}
+and ti.l3_name in {ind_list}
+and tl.days_list >= {days_list}
+and tl.price >= {price}
+and tl.amount >= {amount}
+and ts.rank_mc >= {rank_mc}
+and ts.rank_pb >= {rank_pb}
+) t
+) t
+where lead_ind <= {n_ind}
+) t
+where lead_stock <= {n}
+""".format(start_date=start_date_sql, end_date=end_date, 
+ind_list=tuple(gc.WHITE_INDUSTRY_LIST),
+days_list=gc.LIMIT_DAYS_LIST, 
+price=gc.LIMIT_PRICE, amount=gc.LIMIT_AMOUNT, 
+rank_mc=gc.LIMIT_RANK_MC, rank_pb=gc.LIMIT_RANK_PB, 
+n_ind=gc.LIMIT_N_IND, n=gc.LIMIT_N)
+
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+mc = df.style_mc.unstack()
 r_a = df.r_a.unstack()
 r_o = df.r_o.unstack()
 r_c = df.r_c.unstack()

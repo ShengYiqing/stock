@@ -42,11 +42,18 @@ def generate_factor(start_date, end_date):
                   'core':1, 
                   'profitability':1, 
                   'cash':1, 
-                  # 'growth':1, 
-                  # 'stability':1, 
+                  'growth':1, 
+                  'stability':1, 
                   }
     sql = tools.generate_sql_y_x(factor_dic.keys(), start_date, end_date, 
-                                 is_trade=False, is_industry=False, white_dic=None, style_dic=None, n_ind=None, n=None)
+                                 limit_days_list=None, 
+                                 limit_suspend=None, 
+                                 limit_breaker=None,
+                                 is_industry=None, 
+                                 white_dic=None, 
+                                 style_dic=None, 
+                                 n_ind=None,
+                                 n=None)
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
     df = pd.read_sql(sql, engine)

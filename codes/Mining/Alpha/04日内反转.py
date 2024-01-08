@@ -12,8 +12,8 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180901'
-end_date = '20231130'
+start_date = '20120101'
+end_date = '20231231'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x([], start_date, end_date)
@@ -49,7 +49,6 @@ o = np.log(o * adj_factor).unstack()
 
 r = c - o
 x = r.ewm(halflife=5).sum()
-x = tools.neutralize(x, ind='l3')
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 38, 'reversal')
+tools.factor_analyse(x_, y, 56, 'reversal')

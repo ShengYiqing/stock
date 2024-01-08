@@ -26,7 +26,7 @@ start_date_sql = tools.trade_date_shift(start_date, n)
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.total_mv mc 
+t1.pb pb
 from tsdata.ttsdailybasic t1
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
@@ -36,11 +36,10 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date,
                  stock_codes=tuple(stock_codes))
 df = pd.read_sql(sql, engine)
 
-mc = df.set_index(['trade_date', 'stock_code']).loc[:, 'mc']
-mc = np.log(mc)
+pb = df.set_index(['trade_date', 'stock_code']).loc[:, 'pb']
+bp = np.log(1/pb)
 
-x = mc.unstack()
-# x = tools.neutralize(x)
+x = bp.unstack()
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'mc')
+tools.factor_analyse(x_, y, 10, 'bp')

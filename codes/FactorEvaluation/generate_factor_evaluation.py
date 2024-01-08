@@ -78,16 +78,17 @@ if __name__ == '__main__':
     # start_date = '20100101'
     
     factors = [
-        'beta',
+        'beta', 
+        'mc', 
+        'bp', 
         'jump', 
         'reversal', 
-        'momentum',  
-        'seasonality',
-        'skew',
+        'momentum', 
+        'seasonality', 
+        'skew', 
         'crhl', 
-        'cphl', 
+        'cphl',
         ]
-
     # factors = ['beta']
     sql = tools.generate_sql_y_x(factors, start_date, end_date, label_type='c')
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/?charset=utf8")

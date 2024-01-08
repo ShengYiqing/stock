@@ -12,8 +12,8 @@ import tools
 from sqlalchemy import create_engine
 
 #%%
-start_date = '20180101'
-end_date = '20231130'
+start_date = '20120101'
+end_date = '20231231'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
 sql_y = tools.generate_sql_y_x_ind([], start_date, end_date)
@@ -97,4 +97,4 @@ x = r.rolling(n, min_periods=int(0.8*n)).skew()
 
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 5, 'skew')
+tools.factor_analyse(x_, y, 3, 'skew')

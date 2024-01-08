@@ -1,10 +1,11 @@
-select * from
-( 
 select t.* from
 (
 select t.*, rank() over(order by mc desc)lead_stock from
 (
-select t.*, rank() over(partition by l1_name, l2_name, l3_name order by mc desc) lead_ind from
+select t.*, 
+rank() over(partition by l1_name order by mc desc) lead_ind_1, 
+rank() over(partition by l1_name, l2_name order by mc desc) lead_ind_2, 
+rank() over(partition by l1_name, l2_name, l3_name order by mc desc) lead_ind_3 from
 (
 select tl.trade_date, tl.stock_code, tl.price, tl.amount, tsb.name, ti.l1_name, ti.l2_name, ti.l3_name, ts.beta, ts.rank_beta, ts.mc, ts.rank_mc, ts.pb, ts.rank_pb
 from label.tdailylabel tl
@@ -15,14 +16,12 @@ on tl.stock_code = ti.stock_code
 left join style.tdailystyle ts
 on tl.trade_date = ts.trade_date
 and tl.stock_code = ts.stock_code
-where tl.trade_date = '20120104'
-and tl.amount >= 30000 and tl.price >= 3
-and tl.is_trade = 1
-and ts.rank_mc >= 0.2 and ts.rank_pb >= 0
+where tl.trade_date = '20231229'
+and tl.amount >= 30000 and tl.price >= 5
+#and ts.rank_beta >= 0.05 and ts.rank_mc >= 0.05 and ts.rank_pb >= 0.05
 ) t
 ) t
-where t.lead_ind <= 500
+where t.lead_ind_3 <= 21
 ) t
-where t.lead_stock <= 3800
+where t.lead_stock <= 777
 order by l1_name, l2_name, l3_name, lead_stock
-) t

@@ -104,18 +104,23 @@ def factor_analyse(x, y, num_group, factor_name):
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1)+1).cumprod().rename('%s'%(n/num_group))
-    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    ax = DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    ax.legend(loc='upper left')
     
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = (group_pos[n] * y).mean(1).cumsum().rename('%s'%(n/num_group))
-    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
-    
+    ax = DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    ax.legend(loc='upper left')
     
     group_mean = {}
     for n in range(num_group):
         group_mean[n] = ((group_pos[n] * y).mean(1) - 1*y.mean(1)).cumsum().rename('%s'%(n/num_group))
-    DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    ax = DataFrame(group_mean).plot(figsize=(16, 9), cmap='coolwarm', title=factor_name)
+    ax.legend(loc='upper left')
+    
+    
+    
     
     plt.figure(figsize=(16, 9))
     group_hist = [group_mean[i].iloc[np.where(group_mean[i].notna())[0][-1]] for i in range(num_group)]
@@ -143,9 +148,9 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
                      limit_days_list=gc.LIMIT_DAYS_LIST, 
                      limit_suspend=gc.LIMIT_SUSPEND, 
                      limit_breaker=gc.LIMIT_BREAKER,
-                     is_industry=True, 
+                     is_industry=gc.WHITE_INDUSTRY, 
                      white_dic={'price': gc.LIMIT_PRICE, 'amount': gc.LIMIT_AMOUNT}, 
-                     style_dic={'rank_mc': gc.LIMIT_RANK_MC, 'rank_pb': gc.LIMIT_RANK_PB}, 
+                     style_dic={'rank_beta': gc.LIMIT_RANK_BETA, 'rank_mc': gc.LIMIT_RANK_MC, 'rank_pb': gc.LIMIT_RANK_PB}, 
                      n_ind=gc.LIMIT_N_IND,
                      n=gc.LIMIT_N):
     sql = """

@@ -13,15 +13,14 @@ on tl.stock_code = ti.stock_code
 left join style.tdailystyle ts
 on tl.trade_date = ts.trade_date
 and tl.stock_code = ts.stock_code
-where tl.trade_date = '20231227'
-and tl.amount >= 50000 and tl.price >= 5
-and ts.rank_mc >= 0.2
+where tl.trade_date = '20231229'
+and tl.amount >= 30000 and tl.price >= 5
 and ti.l3_name in (
 '化妆品制造及其他', '品牌化妆品', '医美服务', '医美耗材', 
 '烘焙食品', '熟食', '零食', '白酒Ⅲ', '调味发酵品Ⅲ', '其他酒类', '啤酒', '保健品', '肉制品', '预加工食品', '乳品', '软饮料')
+) t		
 ) t
+where t.lead_ind <= 3
 ) t
-where t.lead_ind <= 7
-) t
-where t.lead_stock <= 50
+where t.lead_stock <= 30
 order by l1_name, l2_name, l3_name, lead_stock

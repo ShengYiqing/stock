@@ -13,10 +13,10 @@ from sqlalchemy import create_engine
 
 #%%
 start_date = '20120101'
-end_date = '20231130'
+end_date = '20231231'
 engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
 
-sql_y = tools.generate_sql_y_x([], start_date, end_date, white_dic=None, style_dic=None)
+sql_y = tools.generate_sql_y_x([], start_date, end_date)
 df_y = pd.read_sql(sql_y, engine)
 y = df_y.set_index(['trade_date', 'stock_code']).r.unstack()
 stock_codes = list(y.columns)
@@ -26,7 +26,7 @@ start_date_sql = tools.trade_date_shift(start_date, n)
 
 sql = """
 select t1.trade_date, t1.stock_code, 
-t1.pb pb
+t1.dv_ttm
 from tsdata.ttsdailybasic t1
 where t1.trade_date >= {start_date}
 and t1.trade_date <= {end_date}
@@ -36,10 +36,10 @@ sql = sql.format(start_date=start_date_sql, end_date=end_date,
                  stock_codes=tuple(stock_codes))
 df = pd.read_sql(sql, engine)
 
-pb = df.set_index(['trade_date', 'stock_code']).loc[:, 'pb']
-bp = np.log(1/pb)
+dv = df.set_index(['trade_date', 'stock_code']).loc[:, 'dv_ttm']
+dv = np.log(dv)
 
-x = bp.unstack()
+x = dv.unstack()
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 10, 'bp')
+tools.factor_analyse(x_, y, 10, 'dv')
