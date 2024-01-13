@@ -18,7 +18,7 @@ from statsmodels.graphics.tsaplots import plot_pacf
 
 import statsmodels.api as sm
 
-halflife = 60
+halflife = 250
 
 lambda_i = 0.001
 print('halflife', halflife)
@@ -31,7 +31,7 @@ factors = [
     'reversal', 
     'momentum',  
     'seasonality',
-    'skew',
+    # 'skew',
     'crhl', 
     'cphl', 
     ]
@@ -40,12 +40,11 @@ weight_sub = {
     'beta': 0.01, 
     'mc': 0.01, 
     'bp': 0.01,
-    'beta': 0.01,
     # 'jump': 0.005, 
     'reversal': 0.01, 
     'momentum': 0.01,  
     'seasonality': 0.01,
-    'skew': 0.01,
+    # 'skew': 0.01,
     'crhl': 0.01, 
     'cphl': 0.01, 
     }
@@ -57,7 +56,7 @@ for factor in factors:
         weight_sub[factor] = 0
 weight_sub = Series(weight_sub)
 
-start_date = '20120101'
+start_date = '20230101'
 if datetime.datetime.today().strftime('%H%M') < '2200':
     end_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime('%Y%m%d')
 else:
@@ -112,8 +111,8 @@ for factor in factors:
     df_x = tools.standardize(df_x)
     x = x.add(df_x.mul(weight.loc[:, factor], axis=0), fill_value=0)
 
-n = 28
+n = 21
 pos = (x.rank(axis=1, pct=True) > (1-1/n))
 ((pos == True) & (pos.shift() == True)).sum(1).plot()
 # x = tools.neutralize(x, ['mc', 'bp'], ind='l3')
-tools.factor_analyse(x, y, n, 'multifactor')
+tools.factor_analyse(x, y, n, 'multifactor', start_date, end_date)

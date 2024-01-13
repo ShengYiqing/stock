@@ -32,20 +32,21 @@ if __name__ == '__main__':
         'seasonality', 
         'skew', 
         'crhl', 
-        'cphl',
-        ]
-    factors = [
-        'operation', 
-        'gross', 
-        'core', 
-        'profitability', 
-        'cash', 
-        'growth', 
-        'stability', 
+        'cphl', 
         'quality'
         ]
-    # factors = ['bp']
-    start_date = '20120101'
+    # factors = [
+    #     'operation', 
+    #     'gross', 
+    #     'core', 
+    #     'profitability', 
+    #     'cash', 
+    #     'growth', 
+    #     'stability', 
+    #     'quality'
+    #     ]
+    # factors = ['mc']
+    start_date = '20180101'
     end_date = '20231231'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     sql = tools.generate_sql_y_x(factors, start_date, end_date)

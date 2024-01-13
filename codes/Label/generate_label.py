@@ -56,9 +56,9 @@ suspend = df.loc[:, 'suspend_type']
 
 AVG = AMOUNT / VOL
 
-AVG_hfq = np.log(AVG * ADJ)
-open_hfq = np.log(OPEN * ADJ)
-close_hfq = np.log(CLOSE * ADJ)
+AVG_hfq = np.log(AVG * ADJ).replace(-np.inf, np.nan)
+open_hfq = np.log(OPEN * ADJ).replace(-np.inf, np.nan)
+close_hfq = np.log(CLOSE * ADJ).replace(-np.inf, np.nan)
 
 r_a = AVG_hfq.shift(-2) - AVG_hfq.shift(-1)
 

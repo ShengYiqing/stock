@@ -21,15 +21,16 @@ import Global_Config as gc
 from sklearn.linear_model import LinearRegression
 
 trade_date = datetime.datetime.today().strftime('%Y%m%d')
-trade_date = '20240108'
+trade_date = '20240111'
 
 with open('D:/stock/Codes/Trade/Results/position/pos.pkl', 'rb') as f:
     position = pickle.load(f)
 
-buy_list = ['688981', '300059', '000977', '600276', 
+buy_list = ['600519', '601985', '002230', '601699', 
             ]
 
-sell_list= ['002568', '605499', '600597', 
+sell_list= ['000858', '000568', '600887', '603345', 
+            '603605', '002594', '002714', '603225', 
             ]
 
 position.extend(buy_list)
@@ -46,7 +47,7 @@ print(position)
 print('----持股数量----')
 print('持股数量: ', len(position))
 
-halflife = 60
+halflife = 250
 
 lambda_i = 0.001
 print('halflife', halflife)

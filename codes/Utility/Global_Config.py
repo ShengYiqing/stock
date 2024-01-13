@@ -14,8 +14,8 @@ LIMIT_AMOUNT = 30000
 LIMIT_RANK_BETA = 0.0
 LIMIT_RANK_MC = 0.0
 LIMIT_RANK_PB = 0.0
-LIMIT_N_IND = 21
-LIMIT_N = 777
+LIMIT_P_IND = 0.05
+LIMIT_N = 168
 LIMIT_DAYS_LIST = 255
 LIMIT_SUSPEND = True
 LIMIT_BREAKER = True
@@ -64,3 +64,15 @@ WHITE_INDUSTRY_LIST = []
 for k1 in WHITE_INDUSTRY_DIC.keys():
     for k2 in WHITE_INDUSTRY_DIC[k1].keys():
         WHITE_INDUSTRY_LIST.extend(WHITE_INDUSTRY_DIC[k1][k2])
+
+#token
+f = open("%s/gm.txt"%PROJECT_PATH)
+s = f.read()
+f.close()
+TOKEN_GM = s
+
+f = open("%s/ifind.txt"%PROJECT_PATH)
+s = f.read()
+f.close()
+USERNAME_IFIND = s.split(' ')[0]
+PASSWORD_IFIND = s.split(' ')[1]

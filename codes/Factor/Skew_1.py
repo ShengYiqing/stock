@@ -27,23 +27,35 @@ def generate_factor(start_date, end_date):
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/tsdata?charset=utf8")
     
     sql = """
-    select t1.STOCK_CODE, t1.TRADE_DATE, t1.CLOSE, t2.ADJ_FACTOR from ttsdaily t1
+    select t1.trade_date, t1.stock_code, 
+    t1.close, t1.high, t1.low, 
+    t2.adj_factor, 
+    tud.up_limit, tud.down_limit 
+    from ttsdaily t1
     left join ttsadjfactor t2
-    on t1.STOCK_CODE = t2.STOCK_CODE
-    and t1.TRADE_DATE = t2.TRADE_DATE
+    on t1.stock_code = t2.stock_code
+    and t1.trade_date = t2.trade_date
+    left join ttsstklimit tud
+    on t1.stock_code = tud.stock_code
+    and t1.trade_date = tud.trade_date
     where t1.trade_date >= {start_date}
     and t1.trade_date <= {end_date}
     """
     sql = sql.format(start_date=start_date_sql, end_date=end_date)
-    df = pd.read_sql(sql, engine)
-    CLOSE = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'CLOSE']
-    ADJ_FACTOR = df.set_index(['TRADE_DATE', 'STOCK_CODE']).loc[:, 'ADJ_FACTOR']
-    CLOSE = CLOSE.unstack()
-    ADJ_FACTOR = ADJ_FACTOR.unstack()
-    CLOSE = np.log(CLOSE * ADJ_FACTOR)
-    r = CLOSE.diff()
+    df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
+    c = df.loc[:, 'close']
+    af = df.loc[:, 'adj_factor']
+    r = np.log(c * af).unstack().diff()
     
-    n1 = 20
+    h = df.loc[:, 'high']
+    l = df.loc[:, 'low']
+    u = df.loc[:, 'up_limit']
+    d = df.loc[:, 'down_limit']
+    
+    ud = (u == h) | (d == l)
+    ud = ud.unstack().fillna(False)
+    r[ud] = np.nan
+    n1 = 5
     n2 = 250
     x1 = r.rolling(n1, min_periods=int(0.8*n1)).skew()
     x2 = r.rolling(n2, min_periods=int(0.8*n2)).skew()

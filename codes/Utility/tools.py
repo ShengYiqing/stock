@@ -60,12 +60,18 @@ def rolling_weight_sum(df_sum, df_weight, n, weight_type):
     return df_return
 
 
-def factor_analyse(x, y, num_group, factor_name):
+def factor_analyse(x, y, num_group, factor_name, start_date=None, end_date=None):
     #因子分布
     try:
         os.mkdir('%s/Factor/%s'%(gc.OUTPUT_PATH, factor_name))
     except:
         pass
+    if start_date:
+        x = x.loc[x.index>=start_date]
+        y = y.loc[y.index>=start_date]
+    if end_date:
+        x = x.loc[x.index<=end_date]
+        y = y.loc[y.index<=end_date]
     plt.figure(figsize=(16,9))
     plt.hist(x.values.flatten())
     plt.title(factor_name+'-hist')
@@ -151,7 +157,7 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
                      is_industry=gc.WHITE_INDUSTRY, 
                      white_dic={'price': gc.LIMIT_PRICE, 'amount': gc.LIMIT_AMOUNT}, 
                      style_dic={'rank_beta': gc.LIMIT_RANK_BETA, 'rank_mc': gc.LIMIT_RANK_MC, 'rank_pb': gc.LIMIT_RANK_PB}, 
-                     n_ind=gc.LIMIT_N_IND,
+                     p_ind=gc.LIMIT_P_IND,
                      n=gc.LIMIT_N):
     sql = """
     select t3.l3_name, t1.trade_date, t1.stock_code, 
@@ -195,19 +201,19 @@ def generate_sql_y_x(factor_names, start_date, end_date, label_type='o',
     if is_industry:
         sql += (" and t3.l3_name in %s "%gc.WHITE_INDUSTRY_LIST).replace('[', '(').replace(']', ')')
     
-    if n_ind:
+    if p_ind:
         sql = """
         select t.* from 
         (
-        select t.*, rank() over (
+        select t.*, percent_rank() over (
             partition by trade_date, l3_name
             order by leading_stock desc
         ) my_rank_ind
         from 
         ({sql}) t
         ) t
-        where t.my_rank_ind <= {n_ind}
-        """.format(sql=sql, n_ind=n_ind)
+        where t.my_rank_ind <= {p_ind}
+        """.format(sql=sql, p_ind=p_ind)
     if n:
         sql = """
         select t.* from 

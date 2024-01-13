@@ -21,7 +21,7 @@ and tl.amount >= 30000 and tl.price >= 5
 #and ts.rank_beta >= 0.05 and ts.rank_mc >= 0.05 and ts.rank_pb >= 0.05
 ) t
 ) t
-where t.lead_ind_3 <= 21
+where t.lead_ind_3 <= 3
 ) t
-where t.lead_stock <= 777
+where t.lead_stock <= 168
 order by l1_name, l2_name, l3_name, lead_stock
