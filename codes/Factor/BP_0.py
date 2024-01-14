@@ -36,6 +36,7 @@ def generate_factor(start_date, end_date):
     df = df.unstack()
     df = 1 / df
     df = np.log(df)
+    df = df.loc[df.index>=start_date]
     df.replace(-np.inf, np.nan, inplace=True)
     df.replace(np.inf, np.nan, inplace=True)
     df = DataFrame({'factor_value':df.stack()})

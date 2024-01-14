@@ -46,7 +46,7 @@ o = np.log(df.loc[:, 'open'])
 c = np.log(df.loc[:, 'close'])
 h = np.log(df.loc[:, 'high'])
 l = np.log(df.loc[:, 'low'])
-x = (h - o).unstack()
+x = (h-o).unstack() * ((c-l)/(h-l)).unstack()
 
 # af = df.loc[:, 'adj_factor']
 # r = np.log(c * af).unstack().diff()
@@ -69,4 +69,4 @@ x = (h - o).unstack()
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 7, 'alpha1d7')
+tools.factor_analyse(x_, y, 7, 'alpha1d14')

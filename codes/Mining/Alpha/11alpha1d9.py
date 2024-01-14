@@ -46,7 +46,7 @@ o = np.log(df.loc[:, 'open'])
 c = np.log(df.loc[:, 'close'])
 h = np.log(df.loc[:, 'high'])
 l = np.log(df.loc[:, 'low'])
-x = ((c-l)/(h-l)).unstack() * ((o-l)/(h-l)).unstack()
+x = ((c-l)/(h-l)).unstack() * (1-(o-l)/(h-l)).unstack()
 
 # af = df.loc[:, 'adj_factor']
 # r = np.log(c * af).unstack().diff()

@@ -66,4 +66,4 @@ x = np.log(c / o).unstack()
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 7, 'alpha1d8')
+tools.factor_analyse(x_, y, 7, 'alpha1d2')

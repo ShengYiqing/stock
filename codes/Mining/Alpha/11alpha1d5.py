@@ -68,4 +68,4 @@ x = (c-h).unstack()
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 7, 'alpha1d4')
+tools.factor_analyse(x_, y, 7, 'alpha1d5')

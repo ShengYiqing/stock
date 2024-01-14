@@ -18,7 +18,7 @@ def single_factor_analysis(df, factor_name, start_date, end_date):
     # x = tools.neutralize(x)
     y = df.loc[:, 'r'].unstack()
     
-    tools.factor_analyse(x, y, 21, factor_name)
+    tools.factor_analyse(x, y, 7, factor_name)
     
     
 if __name__ == '__main__':
@@ -46,7 +46,8 @@ if __name__ == '__main__':
     #     'quality'
     #     ]
     # factors = ['mc']
-    start_date = '20180101'
+    factors = ['alpha1d%s'%i for i in range(1, 18)]
+    start_date = '20120101'
     end_date = '20231231'
     engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/")
     sql = tools.generate_sql_y_x(factors, start_date, end_date)

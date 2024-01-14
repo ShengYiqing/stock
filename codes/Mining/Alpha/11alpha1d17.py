@@ -42,11 +42,12 @@ and t1.stock_code in {stock_codes}
 """
 sql = sql.format(start_date=start_date_sql, end_date=end_date, stock_codes=stock_codes)
 df = pd.read_sql(sql, engine).set_index(['trade_date', 'stock_code'])
-o = np.log(df.loc[:, 'open'])
-c = np.log(df.loc[:, 'close'])
-h = np.log(df.loc[:, 'high'])
-l = np.log(df.loc[:, 'low'])
-x = (h - o).unstack()
+o = np.log(df.loc[:, 'open'] * df.loc[:, 'adj_factor']).unstack()
+c = np.log(df.loc[:, 'close'] * df.loc[:, 'adj_factor']).unstack()
+h = np.log(df.loc[:, 'high'] * df.loc[:, 'adj_factor']).unstack()
+l = np.log(df.loc[:, 'low'] * df.loc[:, 'adj_factor']).unstack()
+a = np.log(df.loc[:, 'amount']).unstack()
+x = a.diff() * c.diff()
 
 # af = df.loc[:, 'adj_factor']
 # r = np.log(c * af).unstack().diff()
@@ -69,4 +70,4 @@ x = (h - o).unstack()
 # x = tools.neutralize(x)
 x_ = DataFrame(x, index=y.index, columns=y.columns)
 x_[y.isna()] = np.nan
-tools.factor_analyse(x_, y, 7, 'alpha1d7')
+tools.factor_analyse(x_, y, 7, 'alpha1d17')
